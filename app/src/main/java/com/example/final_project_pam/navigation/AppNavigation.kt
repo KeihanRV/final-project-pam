@@ -3,6 +3,7 @@ package com.example.final_project_pam.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -23,10 +24,6 @@ fun AppNavigation(
 ) {
     val authCheckState = authViewModel.authCheckState.collectAsStateWithLifecycle()
 
-    /*
-     * Saat aplikasi baru dibuka, cek dulu apakah user masih login.
-     * Jangan langsung tampilkan LoginScreen.
-     */
     when (authCheckState.value) {
         is AuthCheckState.Checking -> {
             Box(
@@ -36,14 +33,12 @@ fun AppNavigation(
                 CircularProgressIndicator()
             }
         }
-
         is AuthCheckState.Authenticated -> {
             MainNavHost(
                 authViewModel = authViewModel,
                 startDestination = Screen.Dashboard.route
             )
         }
-
         is AuthCheckState.NotAuthenticated -> {
             MainNavHost(
                 authViewModel = authViewModel,
@@ -53,27 +48,21 @@ fun AppNavigation(
     }
 }
 
-
 @Composable
 fun MainNavHost(
     authViewModel: AuthViewModel,
     startDestination: String
 ) {
     val navController = rememberNavController()
-
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
 
-
     LaunchedEffect(uiState.value) {
         if (uiState.value is AuthUiState.Success) {
             navController.navigate(Screen.Dashboard.route) {
-                popUpTo(Screen.Login.route) {
-                    inclusive = true
-                }
+                popUpTo(Screen.Login.route) { inclusive = true }
             }
-
             authViewModel.resetState()
         }
     }
@@ -89,12 +78,8 @@ fun MainNavHost(
                 uiState = uiState.value,
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
-                onLoginClick = {
-                    authViewModel.login()
-                },
-                onNavigateToRegister = {
-                    navController.navigate(Screen.Register.route)
-                }
+                onLoginClick = { authViewModel.login() },
+                onNavigateToRegister = { navController.navigate(Screen.Register.route) }
             )
         }
 
@@ -105,27 +90,36 @@ fun MainNavHost(
                 uiState = uiState.value,
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
-                onRegisterClick = {
-                    authViewModel.register()
-                },
-                onNavigateToLogin = {
-                    navController.popBackStack()
-                }
+                onRegisterClick = { authViewModel.register() },
+                onNavigateToLogin = { navController.popBackStack() }
             )
         }
 
         composable(Screen.Dashboard.route) {
             DashboardScreen(
+                onNavigateToAppSelect = { navController.navigate(Screen.AppSelect.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onLogoutClick = {
                     authViewModel.logout()
-
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Dashboard.route) {
-                            inclusive = true
-                        }
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
                     }
                 }
             )
+        }
+
+        composable(Screen.AppSelect.route) {
+            // Placeholder for App Select Screen
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("App Select Screen Placeholder")
+            }
+        }
+
+        composable(Screen.Profile.route) {
+            // Placeholder for Profile Screen
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Profile Screen Placeholder")
+            }
         }
     }
 }

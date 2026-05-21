@@ -2,6 +2,7 @@ package com.example.final_project_pam.data
 
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.postgrest.Postgrest
 
 object SupabaseClientProvider {
 
@@ -18,5 +19,10 @@ object SupabaseClientProvider {
          * seperti login, register, logout, dan membaca session user.
          */
         install(Auth)
+
+        /*
+         * install(Postgrest) digunakan untuk mengakses database Supabase.
+         */
+        install(Postgrest)
     }
 }

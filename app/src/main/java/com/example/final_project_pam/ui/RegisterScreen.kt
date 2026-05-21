@@ -5,7 +5,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.final_project_pam.ui.theme.FinalprojectpamTheme
 import com.example.final_project_pam.viewmodel.AuthUiState
 
 @Composable
@@ -87,5 +89,21 @@ fun RegisterScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RegisterScreenPreview() {
+    FinalprojectpamTheme {
+        RegisterScreen(
+            email = "newuser@example.com",
+            password = "password",
+            uiState = AuthUiState.Idle,
+            onEmailChange = {},
+            onPasswordChange = {},
+            onRegisterClick = {},
+            onNavigateToLogin = {}
+        )
     }
 }
