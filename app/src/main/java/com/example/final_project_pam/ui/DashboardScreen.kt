@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -35,7 +36,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel(),
     onNavigateToAppSelect: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onLogoutClick: () -> Unit // Kept for functionality if needed
+    onLogoutClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -63,6 +64,14 @@ fun DashboardScreen(
                     }
                     IconButton(onClick = { /* TODO: Notifications */ }) {
                         Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = UnscrollBlack)
+                    }
+                    // Logout button in TopAppBar
+                    IconButton(onClick = onLogoutClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Logout",
+                            tint = UnscrollBlack
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = UnscrollBackground)
@@ -93,7 +102,8 @@ fun DashboardScreen(
                 is DashboardUiState.Success -> {
                     DashboardContent(
                         userName = state.userName,
-                        usageStats = state.usageStats
+                        usageStats = state.usageStats,
+                        onLogoutClick = onLogoutClick
                     )
                 }
             }
@@ -104,7 +114,8 @@ fun DashboardScreen(
 @Composable
 fun DashboardContent(
     userName: String,
-    usageStats: List<AppUsageStats>
+    usageStats: List<AppUsageStats>,
+    onLogoutClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -172,6 +183,26 @@ fun DashboardContent(
                     Text("No recent activity", color = UnscrollBlack.copy(alpha = 0.5f))
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Logout Button at the bottom
+        Button(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = UnscrollSecondary),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = null,
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -281,7 +312,8 @@ fun DashboardPreview() {
                 AppUsageStats("1", "user1", "Instagram", 45, 60, "2023-10-27"),
                 AppUsageStats("2", "user1", "TikTok", 120, 30, "2023-10-27"),
                 AppUsageStats("3", "user1", "YouTube", 15, 60, "2023-10-27")
-            )
+            ),
+            onLogoutClick = {}
         )
     }
 }
