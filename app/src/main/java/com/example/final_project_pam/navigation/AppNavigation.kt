@@ -11,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import com.example.final_project_pam.ui.AppPickerScreen
+import com.example.final_project_pam.ui.AppSelectScreen
 import com.example.final_project_pam.ui.DashboardScreen
 import com.example.final_project_pam.ui.LoginScreen
 import com.example.final_project_pam.ui.RegisterScreen
+import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import com.example.final_project_pam.viewmodel.AuthCheckState
 import com.example.final_project_pam.viewmodel.AuthUiState
 import com.example.final_project_pam.viewmodel.AuthViewModel
@@ -57,6 +60,7 @@ fun MainNavHost(
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
+    val appSelectViewModel: AppSelectViewModel = viewModel()
 
     LaunchedEffect(uiState.value) {
         if (uiState.value is AuthUiState.Success) {
@@ -109,10 +113,18 @@ fun MainNavHost(
         }
 
         composable(Screen.AppSelect.route) {
-            // Placeholder for App Select Screen
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("App Select Screen Placeholder")
-            }
+            AppSelectScreen(
+                viewModel = appSelectViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPicker = { navController.navigate(Screen.AppSelectPicker.route) }
+            )
+        }
+
+        composable(Screen.AppSelectPicker.route) {
+            AppPickerScreen(
+                viewModel = appSelectViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Profile.route) {
