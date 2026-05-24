@@ -185,25 +185,25 @@ fun DashboardContent(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Logout Button at the bottom
-        Button(
-            onClick = onLogoutClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = UnscrollSecondary),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = null,
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
-        }
+//        Spacer(modifier = Modifier.weight(1f))
+//
+//        // Logout Button at the bottom
+//        Button(
+//            onClick = onLogoutClick,
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(bottom = 24.dp),
+//            colors = ButtonDefaults.buttonColors(containerColor = UnscrollSecondary),
+//            shape = RoundedCornerShape(16.dp)
+//        ) {
+//            Icon(
+//                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+//                contentDescription = null,
+//                tint = Color.White
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
+//        }
     }
 }
 
@@ -309,9 +309,9 @@ fun DashboardPreview() {
         DashboardContent(
             userName = "Harvey",
             usageStats = listOf(
-                AppUsageStats("1", "user1", "Instagram", 45, 60, "2023-10-27"),
-                AppUsageStats("2", "user1", "TikTok", 120, 30, "2023-10-27"),
-                AppUsageStats("3", "user1", "YouTube", 15, 60, "2023-10-27")
+                AppUsageStats(1, "user1", "Instagram", 45, 60, "2023-10-27"),
+                AppUsageStats(2, "user1", "TikTok", 120, 30, "2023-10-27"),
+                AppUsageStats(3, "user1", "YouTube", 15, 60, "2023-10-27")
             ),
             onLogoutClick = {}
         )
