@@ -1,9 +1,13 @@
 package com.example.final_project_pam.ui
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.final_project_pam.data.model.SelectedApp
+import com.example.final_project_pam.service.AppMonitorService
 import com.example.final_project_pam.ui.theme.*
 import com.example.final_project_pam.viewmodel.AppSelectUiState
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
@@ -46,6 +51,7 @@ fun AppSelectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
@@ -137,7 +143,7 @@ fun AppSelectScreen(
                             pendingActionPackage = state.pendingActionPackage,
                             onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
                             onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
-                            onLaunchApp = { pkg -> viewModel.launchApp(pkg) }
+                            onLaunchApp = { app -> viewModel.launchApp(context, app.packageName, app.unscrollMinutes) }
                         )
                     }
                 }
@@ -236,7 +242,7 @@ private fun SelectedAppsContent(
     pendingActionPackage: String?,
     onUpdateMinutes: (String, Int) -> Unit,
     onDeleteApp: (String) -> Unit,
-    onLaunchApp: (String) -> Unit
+    onLaunchApp: (SelectedApp) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -245,6 +251,30 @@ private fun SelectedAppsContent(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            if (!isAccessibilityServiceEnabled(context)) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = UnscrollSecondary.copy(alpha = 0.1f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clickable {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        "⚠️ Klik di sini untuk mengaktifkan izin Unscroll Monitor di Accessibility Settings!",
+                        modifier = Modifier.padding(12.dp),
+                        color = UnscrollSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
         item {
             Column {
                 Text(
@@ -270,7 +300,7 @@ private fun SelectedAppsContent(
                 isPending = pendingActionPackage == app.packageName && isSaving,
                 onMinutesChange = { mins -> onUpdateMinutes(app.packageName, mins) },
                 onDelete = { onDeleteApp(app.packageName) },
-                onLaunch = { onLaunchApp(app.packageName) }
+                onLaunch = { onLaunchApp(app) }
             )
         }
 
@@ -387,7 +417,9 @@ private fun AppCardFull(
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp)
                     )
                 }
 
@@ -468,7 +500,9 @@ private fun AppIconBox(icon: ImageBitmap?, context: Context, packageName: String
             Image(
                 bitmap = icon,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)),
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Fit
             )
         } else {
@@ -480,4 +514,13 @@ private fun AppIconBox(icon: ImageBitmap?, context: Context, packageName: String
             )
         }
     }
+}
+
+fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponentName = ComponentName(context, AppMonitorService::class.java)
+    val enabledServices = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    return enabledServices.contains(expectedComponentName.flattenToString())
 }

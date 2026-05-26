@@ -1,12 +1,17 @@
 package com.example.final_project_pam.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.final_project_pam.data.model.InstalledApp
 import com.example.final_project_pam.data.model.SelectedApp
 import com.example.final_project_pam.repository.AppSelectRepository
+import com.example.final_project_pam.service.AppMonitorService
+import com.example.final_project_pam.service.GatewayTimerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -157,27 +162,27 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun launchApp(packageName: String) {
-        val intent = repository.getLaunchIntent(packageName)
-        if (intent != null) {
+    fun launchApp(context: Context, packageName: String, durationMinutes: Int) {
+        // Set allowed package
+        AppMonitorService.allowedPackage = packageName
+
+        // Start timer service
+        Intent(context, GatewayTimerService::class.java).also {
+            it.action = GatewayTimerService.ACTION_START
+            it.putExtra(GatewayTimerService.EXTRA_DURATION, durationMinutes)
+            it.putExtra(GatewayTimerService.EXTRA_PACKAGE, packageName)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(it)
+            } else {
+                context.startService(it)
+            }
+        }
+
+        // Buka app target
+        context.packageManager.getLaunchIntentForPackage(packageName)?.also { intent ->
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            try {
-                getApplication<Application>().startActivity(intent)
-            } catch (e: Exception) {
-                _uiState.value = when (val current = _uiState.value) {
-                    is AppSelectUiState.Success -> current.copy(
-                        snackbarMessage = "Gagal membuka aplikasi"
-                    )
-                    else -> current
-                }
-            }
-        } else {
-            _uiState.value = when (val current = _uiState.value) {
-                is AppSelectUiState.Success -> current.copy(
-                    snackbarMessage = "Aplikasi tidak ditemukan"
-                )
-                else -> current
-            }
+            context.startActivity(intent)
         }
     }
 
