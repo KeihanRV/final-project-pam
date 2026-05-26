@@ -4,6 +4,12 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.example.final_project_pam.MainActivity
+import com.example.final_project_pam.repository.AppSelectRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class AppMonitorService : AccessibilityService() {
 
@@ -13,8 +19,12 @@ class AppMonitorService : AccessibilityService() {
         var isTimerRunning: Boolean = false
     }
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private lateinit var repository: AppSelectRepository
+
     override fun onServiceConnected() {
         instance = this
+        repository = AppSelectRepository(applicationContext)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -22,10 +32,20 @@ class AppMonitorService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName || pkg == "com.android.systemui") return
 
-        // Jika app ini ada di daftar monitored dan bukan yang diizinkan
         if (GatewayTimerService.monitoredPackages.contains(pkg)) {
+            // Block jika timer tidak berjalan untuk app ini
             if (allowedPackage != pkg || !isTimerRunning) {
-                forceOpenUnscroll()
+                // Cek apakah app sedang dalam status lock
+                scope.launch {
+                    val apps = try { repository.getCachedApps() } catch (e: Exception) { emptyList() }
+                    val app = apps.find { it.packageName == pkg }
+                    val isLocked = app != null && app.lockUntilTimestamp > System.currentTimeMillis()
+                    if (isLocked || allowedPackage != pkg || !isTimerRunning) {
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            forceOpenUnscroll()
+                        }
+                    }
+                }
             }
         }
     }
