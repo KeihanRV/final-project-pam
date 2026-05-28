@@ -1,17 +1,24 @@
 package com.example.final_project_pam.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.final_project_pam.data.model.InstalledApp
 import com.example.final_project_pam.data.model.SelectedApp
 import com.example.final_project_pam.repository.AppSelectRepository
+import com.example.final_project_pam.service.AppMonitorService
+import com.example.final_project_pam.service.GatewayTimerService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class AppSelectViewModel(application: Application) : AndroidViewModel(application) {
@@ -29,12 +36,46 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _currentSelectedPackages = MutableStateFlow<Set<String>>(emptySet())
 
+    // Tracks current epoch ms for lock expiry checks, updated every second
+    private val _nowMs = MutableStateFlow(System.currentTimeMillis())
+
+    // Set of packageNames that are currently locked (lock not yet expired)
+    val lockedPackages: StateFlow<Set<String>> = combine(
+        _uiState, _nowMs
+    ) { state, now ->
+        if (state is AppSelectUiState.Success) {
+            state.selectedApps
+                .filter { it.lockUntilTimestamp > now }
+                .map { it.packageName }
+                .toSet()
+        } else emptySet()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     val hasChanges: StateFlow<Boolean> = combine(_pendingSelections, _currentSelectedPackages) { pending, current ->
         pending != current
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
         loadData()
+        startLockTicker()
+    }
+
+    // Di AppSelectViewModel.kt
+
+    private fun startLockTicker() {
+        viewModelScope.launch {
+            while (isActive) {
+                delay(1000)
+                val now = System.currentTimeMillis()
+                _nowMs.value = now
+
+                // Cek apakah ada yang baru saja terkunci di DataStore (dari Service)
+                val current = _uiState.value as? AppSelectUiState.Success ?: continue
+
+                // Opsional: Kamu bisa memanggil loadData() di sini secara berkala
+                // atau jika mendeteksi perubahan di DataStore agar UI terupdate otomatis
+            }
+        }
     }
 
     fun loadData() {
@@ -157,27 +198,41 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun launchApp(packageName: String) {
-        val intent = repository.getLaunchIntent(packageName)
-        if (intent != null) {
+    fun launchApp(context: Context, packageName: String, durationMinutes: Int) {
+        // Set allowed package
+        AppMonitorService.allowedPackage = packageName
+
+        // Start timer service
+        Intent(context, GatewayTimerService::class.java).also {
+            it.action = GatewayTimerService.ACTION_START
+            it.putExtra(GatewayTimerService.EXTRA_DURATION, durationMinutes)
+            it.putExtra(GatewayTimerService.EXTRA_PACKAGE, packageName)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(it)
+            } else {
+                context.startService(it)
+            }
+        }
+
+        // Buka app target
+        context.packageManager.getLaunchIntentForPackage(packageName)?.also { intent ->
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            try {
-                getApplication<Application>().startActivity(intent)
-            } catch (e: Exception) {
-                _uiState.value = when (val current = _uiState.value) {
-                    is AppSelectUiState.Success -> current.copy(
-                        snackbarMessage = "Gagal membuka aplikasi"
-                    )
-                    else -> current
-                }
+            context.startActivity(intent)
+        }
+    }
+
+    /** Dipanggil oleh GatewayTimerService saat timer selesai untuk menyimpan lock 15 menit */
+    fun applyLockAfterTimer(packageName: String) {
+        viewModelScope.launch {
+            val lockUntil = System.currentTimeMillis() + (15L * 60 * 1000)
+            repository.setLockForApp(packageName, lockUntil)
+
+            val current = _uiState.value as? AppSelectUiState.Success ?: return@launch
+            val updated = current.selectedApps.map { app ->
+                if (app.packageName == packageName) app.copy(lockUntilTimestamp = lockUntil) else app
             }
-        } else {
-            _uiState.value = when (val current = _uiState.value) {
-                is AppSelectUiState.Success -> current.copy(
-                    snackbarMessage = "Aplikasi tidak ditemukan"
-                )
-                else -> current
-            }
+            _uiState.value = current.copy(selectedApps = updated)
         }
     }
 

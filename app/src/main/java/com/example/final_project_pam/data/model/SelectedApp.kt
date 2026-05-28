@@ -8,5 +8,6 @@ data class SelectedApp(
     val userId: String,
     val packageName: String,
     val appLabel: String,
-    val unscrollMinutes: Int = 15
+    val unscrollMinutes: Int = 15,
+    val lockUntilTimestamp: Long = 0L
 )
