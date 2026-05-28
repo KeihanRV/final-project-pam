@@ -33,14 +33,14 @@ class AppSelectRepository(context: Context) {
             .sortedBy { it.label.lowercase() }
     }
 
+    // Di AppSelectRepository.kt, ubah fungsi getUserSelectedApps:
+
     suspend fun getUserSelectedApps(uid: String): List<SelectedApp> {
+        val localApps = appDataStore.cachedSelectedApps.first()
+
         val fromNetwork = try {
             supabase.postgrest["user_selected_apps"]
-                .select {
-                    filter {
-                        eq("user_id", uid)
-                    }
-                }
+                .select { filter { eq("user_id", uid) } }
                 .decodeList<SelectedAppSupabase>()
                 .map { it.toDomain() }
         } catch (e: Exception) {
@@ -48,11 +48,20 @@ class AppSelectRepository(context: Context) {
         }
 
         if (fromNetwork != null) {
-            appDataStore.saveSelectedApps(fromNetwork)
-            return fromNetwork
+            // GABUNGKAN: Pakai data dari network, tapi kalau di lokal ada lock, jangan dibuang
+            val mergedApps = fromNetwork.map { netApp ->
+                val localMatch = localApps.find { it.packageName == netApp.packageName }
+                if (localMatch != null && localMatch.lockUntilTimestamp > System.currentTimeMillis()) {
+                    netApp.copy(lockUntilTimestamp = localMatch.lockUntilTimestamp)
+                } else {
+                    netApp
+                }
+            }
+            appDataStore.saveSelectedApps(mergedApps)
+            return mergedApps
         }
 
-        return appDataStore.cachedSelectedApps.first()
+        return localApps
     }
 
     suspend fun upsertSelectedApp(
@@ -120,6 +129,19 @@ class AppSelectRepository(context: Context) {
 
     suspend fun updateCachedApps(apps: List<SelectedApp>) {
         appDataStore.saveSelectedApps(apps)
+    }
+
+    suspend fun setLockForApp(packageName: String, lockUntilTimestamp: Long) {
+        val current = appDataStore.cachedSelectedApps.first()
+        val updated = current.map { app ->
+            if (app.packageName == packageName) app.copy(lockUntilTimestamp = lockUntilTimestamp)
+            else app
+        }
+        appDataStore.saveSelectedApps(updated)
+    }
+
+    suspend fun getCachedApps(): List<SelectedApp> {
+        return appDataStore.cachedSelectedApps.first()
     }
 
     fun getLaunchIntent(packageName: String) = packageManagerSource.getLaunchIntent(packageName)

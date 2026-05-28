@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Unscroll</string>
+    <string name="accessibility_description">Unscroll memantau aplikasi untuk mencegah doomscrolling</string>
 </resources>

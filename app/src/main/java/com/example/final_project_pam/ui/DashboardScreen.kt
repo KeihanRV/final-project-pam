@@ -45,7 +45,6 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Placeholder for Unscroll Logo
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
@@ -65,7 +64,6 @@ fun DashboardScreen(
                     IconButton(onClick = { /* TODO: Notifications */ }) {
                         Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = UnscrollBlack)
                     }
-                    // Logout button in TopAppBar
                     IconButton(onClick = onLogoutClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
@@ -87,7 +85,7 @@ fun DashboardScreen(
         },
         containerColor = UnscrollBackground
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             when (val state = uiState) {
                 is DashboardUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
@@ -124,7 +122,6 @@ fun DashboardContent(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Greeting
         Text(
             text = "Hi, $userName",
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -141,7 +138,6 @@ fun DashboardContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Chart Placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -159,7 +155,6 @@ fun DashboardContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Recent Apps Section
         Text(
             text = "Recent",
             style = MaterialTheme.typography.titleLarge.copy(
@@ -184,26 +179,6 @@ fun DashboardContent(
                 }
             }
         }
-
-//        Spacer(modifier = Modifier.weight(1f))
-//
-//        // Logout Button at the bottom
-//        Button(
-//            onClick = onLogoutClick,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(bottom = 24.dp),
-//            colors = ButtonDefaults.buttonColors(containerColor = UnscrollSecondary),
-//            shape = RoundedCornerShape(16.dp)
-//        ) {
-//            Icon(
-//                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-//                contentDescription = null,
-//                tint = Color.White
-//            )
-//            Spacer(modifier = Modifier.width(8.dp))
-//            Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
-//        }
     }
 }
 
@@ -221,7 +196,6 @@ fun RecentAppCard(stat: AppUsageStats) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // App Icon Placeholder
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -241,7 +215,7 @@ fun RecentAppCard(stat: AppUsageStats) {
             )
             
             Text(
-                text = "2 Hours ago", // Placeholder for relative time
+                text = "${stat.time_spent_minutes} Minutes",
                 color = UnscrollBlack.copy(alpha = 0.6f),
                 fontSize = 12.sp
             )
@@ -309,9 +283,9 @@ fun DashboardPreview() {
         DashboardContent(
             userName = "Harvey",
             usageStats = listOf(
-                AppUsageStats(1, "user1", "Instagram", 45, 60, "2023-10-27"),
-                AppUsageStats(2, "user1", "TikTok", 120, 30, "2023-10-27"),
-                AppUsageStats(3, "user1", "YouTube", 15, 60, "2023-10-27")
+                AppUsageStats(1L, "user1", "com.instagram.android", "Instagram", 45L, 60L, "2023-10-27"),
+                AppUsageStats(2L, "user1", "com.zhiliaoapp.musically", "TikTok", 120L, 30L, "2023-10-27"),
+                AppUsageStats(3L, "user1", "com.google.android.youtube", "YouTube", 15L, 60L, "2023-10-27")
             ),
             onLogoutClick = {}
         )

@@ -11,6 +11,9 @@ data class AppUsageStats(
     @SerialName("user_id")
     val user_id: String,
 
+    @SerialName("package_name")
+    val packageName: String,
+
     @SerialName("app_name")
     val app_name: String,
 
@@ -23,4 +26,3 @@ data class AppUsageStats(
     @SerialName("last_accessed")
     val last_accessed: String
 )
-
