@@ -2,20 +2,26 @@ package com.example.final_project_pam.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import com.example.final_project_pam.features.profile.ui.screen.ProfileScreen
 import com.example.final_project_pam.ui.AppPickerScreen
 import com.example.final_project_pam.ui.AppSelectScreen
 import com.example.final_project_pam.ui.DashboardScreen
 import com.example.final_project_pam.ui.LoginScreen
 import com.example.final_project_pam.ui.RegisterScreen
+import com.example.final_project_pam.ui.components.UnscrollBottomNavigation
+import com.example.final_project_pam.ui.components.UnscrollHeader
+import com.example.final_project_pam.ui.theme.UnscrollBackground
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import com.example.final_project_pam.viewmodel.AuthCheckState
 import com.example.final_project_pam.viewmodel.AuthUiState
@@ -37,43 +43,96 @@ fun AppNavigation(
             }
         }
         is AuthCheckState.Authenticated -> {
-            MainNavHost(
-                authViewModel = authViewModel,
-                startDestination = Screen.Dashboard.route
-            )
+            AuthenticatedLayout(authViewModel)
         }
         is AuthCheckState.NotAuthenticated -> {
-            MainNavHost(
-                authViewModel = authViewModel,
-                startDestination = Screen.Login.route
-            )
+            AuthNavHost(authViewModel)
         }
     }
 }
 
 @Composable
-fun MainNavHost(
-    authViewModel: AuthViewModel,
-    startDestination: String
+fun AuthenticatedLayout(
+    authViewModel: AuthViewModel
+) {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val appSelectViewModel: AppSelectViewModel = viewModel()
+
+    Scaffold(
+        topBar = {
+            UnscrollHeader(
+                onLogoutClick = {
+                    authViewModel.logout()
+                }
+            )
+        },
+        bottomBar = {
+            UnscrollBottomNavigation(
+                currentRoute = currentRoute,
+                onNavigate = { route ->
+                    if (currentRoute != route) {
+                        navController.navigate(route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                }
+            )
+        },
+        containerColor = UnscrollBackground
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Dashboard.route,
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable(Screen.Dashboard.route) {
+                DashboardScreen()
+            }
+
+            composable(Screen.AppSelect.route) {
+                AppSelectScreen(
+                    viewModel = appSelectViewModel,
+                    onNavigateToPicker = { navController.navigate(Screen.AppSelectPicker.route) }
+                )
+            }
+
+            composable(Screen.AppSelectPicker.route) {
+                AppPickerScreen(
+                    viewModel = appSelectViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    onLogout = {
+                        authViewModel.logout()
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AuthNavHost(
+    authViewModel: AuthViewModel
 ) {
     val navController = rememberNavController()
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
-    val appSelectViewModel: AppSelectViewModel = viewModel()
-
-    LaunchedEffect(uiState.value) {
-        if (uiState.value is AuthUiState.Success) {
-            navController.navigate(Screen.Dashboard.route) {
-                popUpTo(Screen.Login.route) { inclusive = true }
-            }
-            authViewModel.resetState()
-        }
-    }
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Screen.Login.route
     ) {
         composable(Screen.Login.route) {
             LoginScreen(
@@ -97,41 +156,6 @@ fun MainNavHost(
                 onRegisterClick = { authViewModel.register() },
                 onNavigateToLogin = { navController.popBackStack() }
             )
-        }
-
-        composable(Screen.Dashboard.route) {
-            DashboardScreen(
-                onNavigateToAppSelect = { navController.navigate(Screen.AppSelect.route) },
-                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
-                onLogoutClick = {
-                    authViewModel.logout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Dashboard.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        composable(Screen.AppSelect.route) {
-            AppSelectScreen(
-                viewModel = appSelectViewModel,
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToPicker = { navController.navigate(Screen.AppSelectPicker.route) }
-            )
-        }
-
-        composable(Screen.AppSelectPicker.route) {
-            AppPickerScreen(
-                viewModel = appSelectViewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.Profile.route) {
-            // Placeholder for Profile Screen
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Profile Screen Placeholder")
-            }
         }
     }
 }

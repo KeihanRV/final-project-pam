@@ -3,6 +3,7 @@ package com.example.final_project_pam.data
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 
 object SupabaseClientProvider {
 
@@ -24,5 +25,10 @@ object SupabaseClientProvider {
          * install(Postgrest) digunakan untuk mengakses database Supabase.
          */
         install(Postgrest)
+
+        /*
+         * install(Storage) digunakan untuk mengunggah dan mengunduh file (seperti gambar avatar).
+         */
+        install(Storage)
     }
 }

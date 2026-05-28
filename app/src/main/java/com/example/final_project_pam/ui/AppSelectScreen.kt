@@ -16,8 +16,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -43,11 +41,9 @@ import com.example.final_project_pam.viewmodel.AppSelectUiState
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSelectScreen(
     viewModel: AppSelectViewModel,
-    onNavigateBack: () -> Unit,
     onNavigateToPicker: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -102,54 +98,43 @@ fun AppSelectScreen(
         )
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(32.dp).background(UnscrollPrimary, RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) {
-                            Text("U", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unscroll", color = UnscrollBlack, fontWeight = FontWeight.Bold)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToPicker) { Icon(Icons.Outlined.Add, contentDescription = "Tambah", tint = UnscrollPrimary) }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = UnscrollBackground)
-            )
-        },
-        bottomBar = {
-            UnscrollBottomNavigation(currentRoute = "app_select", onDashboardClick = onNavigateBack, onAppSelectClick = { }, onProfileClick = { })
-        },
-        containerColor = UnscrollBackground
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            when (val state = uiState) {
-                is AppSelectUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
-                is AppSelectUiState.Error -> Text(state.message, modifier = Modifier.align(Alignment.Center))
-                is AppSelectUiState.Success -> {
-                    if (state.selectedApps.isEmpty()) {
-                        EmptyContent(onAddClick = onNavigateToPicker)
-                    } else {
-                        SelectedAppsContent(
-                            selectedApps = state.selectedApps,
-                            isSaving = state.isSaving,
-                            pendingActionPackage = state.pendingActionPackage,
-                            lockedPackages = lockedPackages,
-                            onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
-                            onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
-                            onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
-                        )
-                    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = uiState) {
+            is AppSelectUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
+            is AppSelectUiState.Error -> Text(state.message, modifier = Modifier.align(Alignment.Center))
+            is AppSelectUiState.Success -> {
+                if (state.selectedApps.isEmpty()) {
+                    EmptyContent(onAddClick = onNavigateToPicker)
+                } else {
+                    SelectedAppsContent(
+                        selectedApps = state.selectedApps,
+                        isSaving = state.isSaving,
+                        pendingActionPackage = state.pendingActionPackage,
+                        lockedPackages = lockedPackages,
+                        onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
+                        onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
+                        onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
+                    )
                 }
             }
         }
+
+        // FAB to add apps
+        FloatingActionButton(
+            onClick = onNavigateToPicker,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = UnscrollPrimary,
+            contentColor = Color.White
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add App")
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -220,7 +205,7 @@ private fun AppCardFull(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                AppIconBox(icon = icon, context = context, packageName = app.packageName)
+                AppIconBox(icon = icon, packageName = app.packageName)
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(app.appLabel, fontWeight = FontWeight.Bold, color = UnscrollBlack, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -294,7 +279,7 @@ private fun AppCardFull(
 }
 
 @Composable
-private fun AppIconBox(icon: ImageBitmap?, context: Context, packageName: String) {
+private fun AppIconBox(icon: ImageBitmap?, packageName: String) {
     Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, UnscrollBlack.copy(alpha = 0.08f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
         if (icon != null) {
             Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Fit)
@@ -307,14 +292,20 @@ private fun AppIconBox(icon: ImageBitmap?, context: Context, packageName: String
 @Composable
 private fun EmptyContent(onAddClick: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Icon(Icons.Outlined.Apps, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.LightGray)
-        Text("Belum ada aplikasi dipilih")
-        Button(onClick = onAddClick) { Text("Tambah Aplikasi") }
+        Icon(Icons.Default.Apps, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.LightGray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Belum ada aplikasi dipilih", color = Color.Gray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onAddClick, colors = ButtonDefaults.buttonColors(containerColor = UnscrollPrimary)) { Text("Tambah Aplikasi") }
     }
 }
 
 fun isAccessibilityServiceEnabled(context: Context): Boolean {
-    val expectedComponentName = ComponentName(context, AppMonitorService::class.java)
-    val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-    return enabledServices.contains(expectedComponentName.flattenToString())
+    return try {
+        val expectedComponentName = ComponentName(context, AppMonitorService::class.java)
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        enabledServices.contains(expectedComponentName.flattenToString())
+    } catch (e: Exception) {
+        false
+    }
 }

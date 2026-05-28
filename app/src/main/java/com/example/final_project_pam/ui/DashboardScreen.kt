@@ -6,13 +6,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,80 +24,29 @@ import com.example.final_project_pam.ui.theme.*
 import com.example.final_project_pam.viewmodel.DashboardUiState
 import com.example.final_project_pam.viewmodel.DashboardViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel = viewModel(),
-    onNavigateToAppSelect: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onLogoutClick: () -> Unit
+    viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(UnscrollPrimary, RoundedCornerShape(4.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("U", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unscroll", color = UnscrollBlack, fontWeight = FontWeight.Bold)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: Settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = UnscrollBlack)
-                    }
-                    IconButton(onClick = { /* TODO: Notifications */ }) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = UnscrollBlack)
-                    }
-                    IconButton(onClick = onLogoutClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Logout",
-                            tint = UnscrollBlack
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = UnscrollBackground)
-            )
-        },
-        bottomBar = {
-            UnscrollBottomNavigation(
-                currentRoute = "dashboard",
-                onDashboardClick = { },
-                onAppSelectClick = onNavigateToAppSelect,
-                onProfileClick = onNavigateToProfile
-            )
-        },
-        containerColor = UnscrollBackground
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            when (val state = uiState) {
-                is DashboardUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
-                }
-                is DashboardUiState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                is DashboardUiState.Success -> {
-                    DashboardContent(
-                        userName = state.userName,
-                        usageStats = state.usageStats,
-                        onLogoutClick = onLogoutClick
-                    )
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = uiState) {
+            is DashboardUiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
+            }
+            is DashboardUiState.Error -> {
+                Text(
+                    text = state.message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is DashboardUiState.Success -> {
+                DashboardContent(
+                    userName = state.userName,
+                    usageStats = state.usageStats
+                )
             }
         }
     }
@@ -112,8 +55,7 @@ fun DashboardScreen(
 @Composable
 fun DashboardContent(
     userName: String,
-    usageStats: List<AppUsageStats>,
-    onLogoutClick: () -> Unit
+    usageStats: List<AppUsageStats>
 ) {
     Column(
         modifier = Modifier
@@ -223,71 +165,13 @@ fun RecentAppCard(stat: AppUsageStats) {
     }
 }
 
-@Composable
-fun UnscrollBottomNavigation(
-    currentRoute: String,
-    onDashboardClick: () -> Unit,
-    onAppSelectClick: () -> Unit,
-    onProfileClick: () -> Unit
-) {
-    NavigationBar(
-        containerColor = UnscrollBackground,
-        tonalElevation = 8.dp
-    ) {
-        NavigationBarItem(
-            selected = currentRoute == "dashboard",
-            onClick = onDashboardClick,
-            icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-            label = { Text("Dashboard") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = UnscrollPrimary,
-                selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
-                indicatorColor = UnscrollTertiary
-            )
-        )
-        NavigationBarItem(
-            selected = currentRoute == "app_select",
-            onClick = onAppSelectClick,
-            icon = { Icon(Icons.Outlined.List, contentDescription = "App Select") },
-            label = { Text("Apps") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = UnscrollPrimary,
-                selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
-                indicatorColor = UnscrollTertiary
-            )
-        )
-        NavigationBarItem(
-            selected = currentRoute == "profile",
-            onClick = onProfileClick,
-            icon = { Icon(Icons.Outlined.Person, contentDescription = "Profile") },
-            label = { Text("Profile") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = UnscrollPrimary,
-                selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
-                indicatorColor = UnscrollTertiary
-            )
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun DashboardPreview() {
     FinalprojectpamTheme {
         DashboardContent(
             userName = "Harvey",
-            usageStats = listOf(
-                AppUsageStats(1L, "user1", "com.instagram.android", "Instagram", 45L, 60L, "2023-10-27"),
-                AppUsageStats(2L, "user1", "com.zhiliaoapp.musically", "TikTok", 120L, 30L, "2023-10-27"),
-                AppUsageStats(3L, "user1", "com.google.android.youtube", "YouTube", 15L, 60L, "2023-10-27")
-            ),
-            onLogoutClick = {}
+            usageStats = listOf()
         )
     }
 }

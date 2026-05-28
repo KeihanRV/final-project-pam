@@ -62,9 +62,13 @@ dependencies {
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth.kt)
     implementation(libs.supabase.postgrest.kt)
+    implementation(libs.supabase.storage.kt)
     
     implementation("io.ktor:ktor-client-android:3.4.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     implementation("androidx.datastore:datastore-preferences:1.1.4")
+    
+    // Image Loading
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }
