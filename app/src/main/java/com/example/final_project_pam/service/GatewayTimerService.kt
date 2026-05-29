@@ -24,10 +24,16 @@ class GatewayTimerService : Service() {
         const val ACTION_STOP = "STOP_TIMER"
         const val EXTRA_DURATION = "duration_minutes"
         const val EXTRA_PACKAGE = "target_package"
-        const val CHANNEL_ID = "unscroll_timer"
+        
+        // Channel khusus untuk yang melayang (High Importance)
+        const val CHANNEL_ALERTS = "unscroll_alerts_v2" 
+        // Channel khusus untuk timer yang jalan terus (Low Importance - BIAR GA BUNYI)
+        const val CHANNEL_SILENT = "unscroll_silent" 
+        
         const val NOTIF_ID = 1
         const val NOTIF_ID_WARNING = 2
         const val NOTIF_ID_FINISHED = 3
+        const val NOTIF_ID_FIVE_MIN_WARNING = 4
 
         val monitoredPackages = mutableSetOf<String>()
     }
@@ -35,7 +41,7 @@ class GatewayTimerService : Service() {
     override fun onCreate() {
         super.onCreate()
         repository = AppSelectRepository(applicationContext)
-        createNotificationChannel()
+        createNotificationChannels()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -52,15 +58,18 @@ class GatewayTimerService : Service() {
 
     private fun startTimer(minutes: Int, targetPackage: String) {
         val totalMs = minutes * 60 * 1000L
+        val fiveMinMs = 5 * 60 * 1000L
         val warningMs = 30 * 1000L
 
-        startForeground(NOTIF_ID, buildNotification("Timer berjalan: ${minutes}m 0s"))
+        // PENTING: Gunakan CHANNEL_SILENT untuk timer agar tidak bunyi tiap 5 detik
+        startForeground(NOTIF_ID, buildForegroundNotification("Timer berjalan: ${minutes}m 0s"))
 
         AppMonitorService.allowedPackage = targetPackage
         AppMonitorService.isTimerRunning = true
 
         timerJob = scope.launch {
             var remaining = totalMs
+            var fiveMinWarningSent = false
             var warningSent = false
 
             while (remaining > 0) {
@@ -70,7 +79,12 @@ class GatewayTimerService : Service() {
                 if (remaining % 5000L == 0L) {
                     val min = remaining / 60000
                     val sec = (remaining % 60000) / 1000
-                    updateNotification("Sisa waktu: ${min}m ${sec}s")
+                    updateForegroundNotification("Sisa waktu: ${min}m ${sec}s")
+                }
+
+                if (remaining <= fiveMinMs && !fiveMinWarningSent && totalMs > fiveMinMs) {
+                    fiveMinWarningSent = true
+                    sendFiveMinuteWarningNotification()
                 }
 
                 if (remaining <= warningMs && !warningSent) {
@@ -85,14 +99,9 @@ class GatewayTimerService : Service() {
     private suspend fun onTimerFinished(targetPackage: String) {
         AppMonitorService.isTimerRunning = false
         AppMonitorService.allowedPackage = null
-
-        // Simpan lock ke repository (15 menit) agar app tidak bisa dibuka lagi
         val lockUntil = System.currentTimeMillis() + (15L * 60 * 1000)
         repository.setLockForApp(targetPackage, lockUntil)
-
-        // Kirim notifikasi sesi selesai
         sendTimerFinishedNotification(targetPackage)
-
         withContext(Dispatchers.Main) {
             AppMonitorService.instance?.forceOpenUnscroll()
         }
@@ -106,50 +115,51 @@ class GatewayTimerService : Service() {
         } catch (e: Exception) {
             targetPackage
         }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+        val pendingIntent = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val notif = NotificationCompat.Builder(this, CHANNEL_ALERTS)
             .setContentTitle("⏰ Waktu akses habis")
-            .setContentText("Akses ke $appLabel telah selesai. Terkunci selama 15 menit.")
+            .setContentText("Akses ke $appLabel telah selesai.")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-
         getSystemService(NotificationManager::class.java).notify(NOTIF_ID_FINISHED, notif)
     }
 
-    private fun buildNotification(content: String): Notification {
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildForegroundNotification(content: String): Notification {
+        val pendingIntent = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        return NotificationCompat.Builder(this, CHANNEL_SILENT)
             .setContentTitle("Unscroll aktif")
             .setContentText(content)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true) // Tambahan biar makin sunyi
             .build()
     }
 
-    private fun updateNotification(content: String) {
+    private fun updateForegroundNotification(content: String) {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIF_ID, buildNotification(content))
+        manager.notify(NOTIF_ID, buildForegroundNotification(content))
+    }
+
+    private fun sendFiveMinuteWarningNotification() {
+        val notif = NotificationCompat.Builder(this, CHANNEL_ALERTS)
+            .setContentTitle("⚠️ Peringatan Waktu")
+            .setContentText("5 menit lagi akan berakhir")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(NOTIF_ID_FIVE_MIN_WARNING, notif)
     }
 
     private fun sendWarningNotification() {
-        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notif = NotificationCompat.Builder(this, CHANNEL_ALERTS)
             .setContentTitle("⚠️ Waktu hampir habis!")
-            .setContentText("Sisa 30 detik. Unscroll akan segera aktif.")
+            .setContentText("Sisa 30 detik.")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -157,22 +167,38 @@ class GatewayTimerService : Service() {
         getSystemService(NotificationManager::class.java).notify(NOTIF_ID_WARNING, notif)
     }
 
-    private fun createNotificationChannel() {
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Unscroll Timer",
+            val manager = getSystemService(NotificationManager::class.java)
+
+            // 1. Channel Silent (Low Importance) -> Untuk Timer yang jalan terus
+            val silentChannel = NotificationChannel(
+                CHANNEL_SILENT, 
+                "Timer Aktif", 
                 NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Timer untuk monitoring screen time" }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            ).apply {
+                description = "Menampilkan sisa waktu tanpa suara"
+                setShowBadge(false)
+            }
+            manager.createNotificationChannel(silentChannel)
+
+            // 2. Channel Alerts (High Importance) -> Untuk Peringatan yang Melayang
+            val alertChannel = NotificationChannel(
+                CHANNEL_ALERTS, 
+                "Peringatan Penting", 
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifikasi yang muncul melayang saat waktu mau habis"
+                enableVibration(true)
+            }
+            manager.createNotificationChannel(alertChannel)
         }
     }
 
     override fun onBind(intent: Intent?) = null
-
     override fun onDestroy() {
         timerJob?.cancel()
         scope.cancel()
-        AppMonitorService.isTimerRunning = false
         super.onDestroy()
     }
 }
