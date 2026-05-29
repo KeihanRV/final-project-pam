@@ -126,6 +126,7 @@ fun AuthNavHost(
     authViewModel: AuthViewModel
 ) {
     val navController = rememberNavController()
+    val username = authViewModel.userName.collectAsStateWithLifecycle()
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
@@ -148,6 +149,7 @@ fun AuthNavHost(
 
         composable(Screen.Register.route) {
             RegisterScreen(
+                userName = username.value,
                 email = email.value,
                 password = password.value,
                 uiState = uiState.value,

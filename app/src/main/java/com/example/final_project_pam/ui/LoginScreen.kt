@@ -1,13 +1,18 @@
 package com.example.final_project_pam.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.final_project_pam.ui.theme.FinalprojectpamTheme
+//import com.example.final_project_pam.ui.theme.FinalprojectpamTheme
 import com.example.final_project_pam.viewmodel.AuthUiState
 
 @Composable
@@ -20,20 +25,34 @@ fun LoginScreen(
     onLoginClick: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
-    /*
-     * LoginScreen tidak menyimpan state email/password sendiri.
-     * State dikirim dari luar, yaitu dari ViewModel.
-     * Inilah konsep state hoisting.
-     */
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Placeholder Logo
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "LOGO",
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Login",
+            text = "Masuk",
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -42,10 +61,10 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
-            label = {
-                Text("Email")
-            },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -53,14 +72,13 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            label = {
-                Text("Password")
-            },
+            label = { Text("Kata Sandi") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = onLoginClick,
@@ -70,48 +88,43 @@ fun LoginScreen(
             if (uiState is AuthUiState.Loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Login")
+                Text("Masuk")
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(
-            onClick = onNavigateToRegister,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Belum punya akun? Register")
+        TextButton(onClick = onNavigateToRegister) {
+            Text("Belum memiliki akun? Daftar")
         }
 
-        /*
-         * Jika state Error, tampilkan pesan error.
-         */
         if (uiState is AuthUiState.Error) {
             Spacer(modifier = Modifier.height(12.dp))
-
             Text(
                 text = uiState.message,
-                color = MaterialTheme.colorScheme.error
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    FinalprojectpamTheme {
-        LoginScreen(
-            email = "user@example.com",
-            password = "password123",
-            uiState = AuthUiState.Idle,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onLoginClick = {},
-            onNavigateToRegister = {}
-        )
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun LoginScreenPreview() {
+//
+//        LoginScreen(
+//            email = "user@example.com",
+//            password = "password123",
+//            uiState = AuthUiState.Idle,
+//            onEmailChange = {},
+//            onPasswordChange = {},
+//            onLoginClick = {},
+//            onNavigateToRegister = {}
+//        )
+//
+//}

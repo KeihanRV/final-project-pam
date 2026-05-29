@@ -3,6 +3,7 @@ package com.example.final_project_pam.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.final_project_pam.repository.AuthRepository
+import io.github.jan.supabase.auth.OtpType
 import kotlinx.coroutines.flow.MutableStateFlow
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.StateFlow
@@ -10,49 +11,30 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
 
-    /*
-     * Repository digunakan untuk mengakses Supabase.
-     * Untuk materi dasar, repository dibuat langsung di ViewModel.
-     *
-     * Pada project besar, lebih baik gunakan Dependency Injection seperti Hilt.
-     */
     private val repository = AuthRepository()
 
-    /*
-     * _uiState bersifat private agar hanya ViewModel yang bisa mengubah state.
-     */
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
-
-    /*
-     * uiState bersifat public agar UI hanya bisa membaca state,
-     * tetapi tidak bisa mengubah langsung.
-     */
     val uiState: StateFlow<AuthUiState> = _uiState
 
     private val _authCheckState = MutableStateFlow<AuthCheckState>(AuthCheckState.Checking)
     val authCheckState: StateFlow<AuthCheckState> = _authCheckState
 
-    /*
-     * State untuk input email.
-     * Disimpan di ViewModel agar tetap aman saat recomposition.
-     */
+    private val _userName = MutableStateFlow("")
+    val userName: StateFlow<String> = _userName
+
     private val _email = MutableStateFlow("")
     val email: StateFlow<String> = _email
 
-    /*
-     * State untuk input password.
-     */
     private val _password = MutableStateFlow("")
     val password: StateFlow<String> = _password
+
+    private val _otpCode = MutableStateFlow("")
+    val otpCode: StateFlow<String> = _otpCode
 
     init {
         observeAuthStatus()
     }
 
-    /*
-     * Fungsi untuk memantau status autentikasi secara real-time.
-     * Supabase akan otomatis memuat session dari storage saat app dibuka.
-     */
     private fun observeAuthStatus() {
         viewModelScope.launch {
             repository.sessionStatus.collect { status ->
@@ -61,8 +43,6 @@ class AuthViewModel : ViewModel() {
                     is SessionStatus.NotAuthenticated -> AuthCheckState.NotAuthenticated
                     is SessionStatus.Initializing -> AuthCheckState.Checking
                     is SessionStatus.RefreshFailure -> {
-                        // Jika refresh gagal (misal koneksi internet), tetap cek session yang ada
-                        // atau anggap tidak terautentikasi jika session expired.
                         if (repository.isLoggedIn()) AuthCheckState.Authenticated
                         else AuthCheckState.NotAuthenticated
                     }
@@ -71,97 +51,94 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /*
-     * Fungsi ini dipanggil dari UI ketika user mengetik email.
-     */
+    fun onUsernameChange(value: String) {
+        _userName.value = value
+    }
+
     fun onEmailChange(value: String) {
         _email.value = value
     }
 
-    /*
-     * Fungsi ini dipanggil dari UI ketika user mengetik password.
-     */
     fun onPasswordChange(value: String) {
         _password.value = value
     }
 
-    /*
-     * Fungsi login.
-     * viewModelScope digunakan agar coroutine mengikuti lifecycle ViewModel.
-     */
+    fun onOtpChange(value: String) {
+        _otpCode.value = value
+    }
+
     fun login() {
         viewModelScope.launch {
             try {
-                /*
-                 * Ubah state menjadi Loading agar UI bisa menampilkan progress.
-                 */
                 _uiState.value = AuthUiState.Loading
-
-                /*
-                 * Panggil repository untuk login ke Supabase.
-                 */
                 repository.login(
                     email = _email.value,
                     password = _password.value
                 )
-
-                /*
-                 * Jika berhasil, ubah state menjadi Success.
-                 */
                 _uiState.value = AuthUiState.Success
-
             } catch (e: Exception) {
-                /*
-                 * Jika gagal, tampilkan pesan error.
-                 */
-                _uiState.value = AuthUiState.Error(
-                    message = e.message ?: "Login gagal"
-                )
+                _uiState.value = AuthUiState.Error(message = e.message ?: "Login gagal")
             }
         }
     }
 
-    /*
-     * Fungsi register user baru.
-     */
     fun register() {
         viewModelScope.launch {
             try {
                 _uiState.value = AuthUiState.Loading
-
                 repository.register(
+                    username = _userName.value,
                     email = _email.value,
                     password = _password.value
                 )
-
                 _uiState.value = AuthUiState.Success
-
             } catch (e: Exception) {
-                _uiState.value = AuthUiState.Error(
-                    message = e.message ?: "Register gagal"
-                )
+                _uiState.value = AuthUiState.Error(message = e.message ?: "Register gagal")
             }
         }
     }
 
-    /*
-     * Fungsi logout.
+    /**
+     * Mengirim OTP ke email untuk login (Magic Link/OTP)
      */
+    fun sendOTP() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = AuthUiState.Loading
+                repository.sendOTP(_email.value)
+                _uiState.value = AuthUiState.Success // Bisa digunakan untuk navigasi ke layar input OTP
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(message = e.message ?: "Gagal mengirim OTP")
+            }
+        }
+    }
+
+    /**
+     * Verifikasi OTP yang dimasukkan user
+     */
+    fun verifyOTP(type: OtpType.Email = OtpType.Email.SIGNUP) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = AuthUiState.Loading
+                repository.verifyOTP(
+                    email = _email.value,
+                    token = _otpCode.value,
+                    type = type
+                )
+                _uiState.value = AuthUiState.Success
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(message = e.message ?: "OTP salah atau kadaluarsa")
+            }
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             repository.logout()
-
-            /*
-             * Setelah logout, state dikembalikan ke Idle.
-             */
             _uiState.value = AuthUiState.Idle
         }
     }
 
-    /*
-     * Fungsi ini digunakan untuk mengembalikan state ke Idle.
-     * Biasanya dipanggil setelah navigasi berhasil.
-     */
     fun resetState() {
         _uiState.value = AuthUiState.Idle
     }

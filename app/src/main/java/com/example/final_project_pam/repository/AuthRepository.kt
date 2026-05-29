@@ -3,35 +3,36 @@ package com.example.final_project_pam.repository
 import com.example.final_project_pam.data.SupabaseClientProvider
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
-
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.OtpType
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class AuthRepository {
 
-    /*
-     * Mengambil client Supabase yang sudah dibuat sebelumnya.
-     */
     private val supabase = SupabaseClientProvider.client
 
-    /*
-     * Flow untuk memantau perubahan status session (Authenticated, NotAuthenticated, dll)
-     */
     val sessionStatus: Flow<SessionStatus> = supabase.auth.sessionStatus
 
-    /*
-     * Fungsi register user baru menggunakan email dan password.
-     * Fungsi ini suspend karena prosesnya berjalan secara asynchronous/network.
+    /**
+     * Register dengan Email & Password, serta menyimpan metadata username.
+     * Supabase akan mengirimkan email konfirmasi secara otomatis.
      */
-    suspend fun register(email: String, password: String) {
+    suspend fun register(username: String, email: String, password: String) {
         supabase.auth.signUpWith(Email) {
             this.email = email
             this.password = password
+            // Menyimpan username ke dalam user_metadata
+            data = buildJsonObject {
+                put("username", username)
+            }
         }
     }
 
-    /*
-     * Fungsi login user menggunakan email dan password.
+    /**
+     * Login menggunakan Email & Password.
      */
     suspend fun login(email: String, password: String) {
         supabase.auth.signInWith(Email) {
@@ -40,33 +41,34 @@ class AuthRepository {
         }
     }
 
-    /*
-     * Fungsi logout user dari aplikasi.
+    /**
+     * Mengirim OTP ke Email untuk login tanpa password atau verifikasi.
      */
+    suspend fun sendOTP(email: String) {
+        supabase.auth.signInWith(OTP) {
+            this.email = email
+        }
+    }
+
+    /**
+     * Verifikasi kode OTP yang diterima melalui email.
+     */
+    suspend fun verifyOTP(email: String, token: String, type: OtpType.Email = OtpType.Email.SIGNUP) {
+        supabase.auth.verifyEmailOtp(
+            type = type,
+            email = email,
+            token = token
+        )
+    }
+
     suspend fun logout() {
         supabase.auth.signOut()
     }
 
-    /*
-     * Fungsi untuk mengecek apakah user sudah login atau belum.
-     * Kita buat suspend agar bisa menunggu inisialisasi Supabase selesai.
-     */
     suspend fun isLoggedIn(): Boolean {
-        // Menunggu Supabase selesai memuat session dari storage lokal (SharedPreferences/Settings)
-        // Jika tidak ditunggu, currentSessionOrNull() mungkin masih null saat app baru dibuka.
         try {
             supabase.auth.awaitInitialization()
-        } catch (e: Exception) {
-            // Jika gagal inisialisasi, anggap belum login
-        }
-
+        } catch (e: Exception) {}
         return supabase.auth.currentSessionOrNull() != null
-    }
-
-    /*
-     * Menunggu inisialisasi Auth selesai.
-     */
-    suspend fun awaitAuthInitialization() {
-        supabase.auth.awaitInitialization()
     }
 }
