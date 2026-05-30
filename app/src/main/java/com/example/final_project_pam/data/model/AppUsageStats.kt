@@ -6,7 +6,7 @@ import kotlinx.serialization.SerialName
 @Serializable
 data class AppUsageStats(
     @SerialName("id")
-    val id: Long, // Gunakan Long karena di SQL 'bigint'
+    val id: Long,
 
     @SerialName("user_id")
     val user_id: String,
@@ -24,5 +24,8 @@ data class AppUsageStats(
     val max_limit_minutes: Long,
 
     @SerialName("last_accessed")
-    val last_accessed: String
+    val last_accessed: String,
+
+    @SerialName("usage_date")
+    val usage_date: String = ""
 )
