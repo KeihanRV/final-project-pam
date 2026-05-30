@@ -5,7 +5,11 @@ import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.util.LruCache
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
@@ -14,15 +18,15 @@ import kotlinx.coroutines.withContext
 
 // Cache untuk menyimpan icon agar tidak perlu me-load ulang dari sistem berkali-kali.
 // Ini sangat krusial untuk mencegah Force Close / OOM saat scroll cepat.
-private val iconCache = LruCache<String, ImageBitmap>(50) // Simpan 50 icon terakhir di memori
+val iconCache = LruCache<String, ImageBitmap>(200) // Simpan 200 icon terakhir di memori
 
 /**
  * Mengonversi Drawable ke ImageBitmap dengan ukuran kecil (100x100) agar hemat RAM.
  */
 fun Drawable.toImageBitmapOptimized(): ImageBitmap {
     val bitmap = toBitmap(
-        width = 100,
-        height = 100,
+        width = 80,
+        height = 80,
         config = Bitmap.Config.ARGB_8888
     )
     return bitmap.asImageBitmap()
@@ -30,27 +34,35 @@ fun Drawable.toImageBitmapOptimized(): ImageBitmap {
 
 @Composable
 fun rememberAppIcon(context: Context, packageName: String): ImageBitmap? {
-    // Cek apakah icon sudah ada di cache
-    val cachedIcon = iconCache.get(packageName)
-    if (cachedIcon != null) return cachedIcon
+    val cached = iconCache.get(packageName)
+    if (cached != null) return cached
 
-    return produceState<ImageBitmap?>(initialValue = null, packageName) {
-        // Pindahkan proses pengambilan icon ke Background Thread (IO)
-        // agar scrolling tidak patah-patah atau force close (ANR)
-        value = withContext(Dispatchers.IO) {
+    var icon by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(packageName) {
+        icon = withContext(Dispatchers.Default) {
             try {
-                val icon = context.packageManager.getApplicationIcon(packageName)
-                val optimizedIcon = icon.toImageBitmapOptimized()
-                
-                // Simpan ke cache untuk penggunaan berikutnya
-                iconCache.put(packageName, optimizedIcon)
-                
-                optimizedIcon
-            } catch (e: Exception) {
-                null
-            }
+                val drawable = context.packageManager.getApplicationIcon(packageName)
+                val optimized = drawable.toImageBitmapOptimized()
+                iconCache.put(packageName, optimized)
+                optimized
+            } catch (_: Exception) { null }
         }
-    }.value
+    }
+
+    return icon
+}
+
+/** Pre-load icons for all given packages into cache in batch (chunked per frame) */
+suspend fun preloadAppIcons(context: Context, packages: List<String>) = withContext(Dispatchers.Default) {
+    for (pkg in packages) {
+        if (iconCache.get(pkg) != null) continue
+        try {
+            val icon = context.packageManager.getApplicationIcon(pkg)
+            val optimizedIcon = icon.toImageBitmapOptimized()
+            iconCache.put(pkg, optimizedIcon)
+        } catch (_: Exception) { }
+    }
 }
 
 fun Context.getAppLabel(packageName: String): String {

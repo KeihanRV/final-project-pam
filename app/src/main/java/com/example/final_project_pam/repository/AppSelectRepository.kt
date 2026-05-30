@@ -30,10 +30,9 @@ class AppSelectRepository(context: Context) {
 
     fun getInstalledApps(): List<InstalledApp> {
         return packageManagerSource.getInstalledApps()
+            .filter { !it.isSystem && it.isEnabled }
             .sortedBy { it.label.lowercase() }
     }
-
-    // Di AppSelectRepository.kt, ubah fungsi getUserSelectedApps:
 
     suspend fun getUserSelectedApps(uid: String): List<SelectedApp> {
         val localApps = appDataStore.cachedSelectedApps.first()

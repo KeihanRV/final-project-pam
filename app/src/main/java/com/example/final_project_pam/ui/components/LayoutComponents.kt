@@ -69,8 +69,8 @@ fun UnscrollBottomNavigation(
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = UnscrollPrimary,
                 selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
+                unselectedIconColor = UnscrollBlack.copy(alpha = 0.65f),
+                unselectedTextColor = UnscrollBlack.copy(alpha = 0.65f),
                 indicatorColor = UnscrollTertiary
             )
         )
@@ -82,8 +82,8 @@ fun UnscrollBottomNavigation(
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = UnscrollPrimary,
                 selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
+                unselectedIconColor = UnscrollBlack.copy(alpha = 0.65f),
+                unselectedTextColor = UnscrollBlack.copy(alpha = 0.65f),
                 indicatorColor = UnscrollTertiary
             )
         )
@@ -95,8 +95,8 @@ fun UnscrollBottomNavigation(
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = UnscrollPrimary,
                 selectedTextColor = UnscrollPrimary,
-                unselectedIconColor = UnscrollBlack.copy(alpha = 0.5f),
-                unselectedTextColor = UnscrollBlack.copy(alpha = 0.5f),
+                unselectedIconColor = UnscrollBlack.copy(alpha = 0.65f),
+                unselectedTextColor = UnscrollBlack.copy(alpha = 0.65f),
                 indicatorColor = UnscrollTertiary
             )
         )

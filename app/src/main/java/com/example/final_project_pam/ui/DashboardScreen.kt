@@ -74,7 +74,7 @@ fun DashboardContent(
         Text(
             text = "Always look at your achievement!",
             style = MaterialTheme.typography.bodyMedium.copy(
-                color = UnscrollBlack.copy(alpha = 0.7f)
+                color = UnscrollBlack.copy(alpha = 0.8f)
             )
         )
 
@@ -117,7 +117,7 @@ fun DashboardContent(
             
             if (usageStats.isEmpty()) {
                 item {
-                    Text("No recent activity", color = UnscrollBlack.copy(alpha = 0.5f))
+                    Text("No recent activity", color = UnscrollBlack.copy(alpha = 0.7f))
                 }
             }
         }
@@ -158,7 +158,7 @@ fun RecentAppCard(stat: AppUsageStats) {
             
             Text(
                 text = "${stat.time_spent_minutes} Minutes",
-                color = UnscrollBlack.copy(alpha = 0.6f),
+                color = UnscrollBlack.copy(alpha = 0.75f),
                 fontSize = 12.sp
             )
         }
