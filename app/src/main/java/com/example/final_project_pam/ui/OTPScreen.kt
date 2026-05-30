@@ -1,5 +1,6 @@
 package com.example.final_project_pam.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,15 +21,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.final_project_pam.R
 import com.example.final_project_pam.viewmodel.AuthUiState
 
 @Composable
@@ -47,7 +54,6 @@ fun OTPScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Placeholder Logo
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -57,10 +63,14 @@ fun OTPScreen(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "LOGO",
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                style = MaterialTheme.typography.labelLarge
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo_app),
+                contentDescription = "Logo Unscroll",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
         }
 
@@ -92,6 +102,21 @@ fun OTPScreen(
             label = { Text("Kode OTP") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done
@@ -101,7 +126,6 @@ fun OTPScreen(
             ),
             textStyle = MaterialTheme.typography.displaySmall.copy(textAlign = TextAlign.Center),
             visualTransformation = if (otpCode.isEmpty()) PasswordVisualTransformation() else VisualTransformation.None
-            // Catatan: VisualTransformation di atas untuk menyembunyikan karakter OTP
         )
 
         Spacer(modifier = Modifier.height(24.dp))

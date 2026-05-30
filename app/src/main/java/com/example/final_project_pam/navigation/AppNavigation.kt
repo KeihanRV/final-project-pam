@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,12 +18,14 @@ import com.example.final_project_pam.ui.AppPickerScreen
 import com.example.final_project_pam.ui.AppSelectScreen
 import com.example.final_project_pam.ui.DashboardScreen
 import com.example.final_project_pam.ui.LoginScreen
+import com.example.final_project_pam.ui.OTPScreen
 import com.example.final_project_pam.ui.RegisterScreen
 import com.example.final_project_pam.ui.components.UnscrollBottomNavigation
 import com.example.final_project_pam.ui.components.UnscrollHeader
 import com.example.final_project_pam.ui.theme.UnscrollBackground
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import com.example.final_project_pam.viewmodel.AuthCheckState
+import com.example.final_project_pam.viewmodel.AuthUiState
 import com.example.final_project_pam.viewmodel.AuthViewModel
 
 @Composable
@@ -128,7 +131,29 @@ fun AuthNavHost(
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
     val confirmPassword = authViewModel.confirmPassword.collectAsStateWithLifecycle()
+    val otpCode = authViewModel.otpCode.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState.value) {
+        when (uiState.value) {
+            is AuthUiState.OtpSent -> {
+                val currentRoute = navController.currentBackStackEntry?.destination?.route
+                if (currentRoute != Screen.OTP.route) {
+                    navController.navigate(Screen.OTP.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                }
+                authViewModel.resetState()
+            }
+            is AuthUiState.OtpVerified -> {
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+                authViewModel.resetAuthFields()
+            }
+            else -> {}
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -145,7 +170,7 @@ fun AuthNavHost(
                 onNavigateToRegister = {
                     authViewModel.resetAuthFields()
                     navController.navigate(Screen.Register.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -165,7 +190,33 @@ fun AuthNavHost(
                 onRegisterClick = { authViewModel.register() },
                 onNavigateToLogin = {
                     authViewModel.resetAuthFields()
-                    navController.popBackStack()
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.OTP.route) {
+            OTPScreen(
+                otpCode = otpCode.value,
+                uiState = uiState.value,
+                onOtpChange = authViewModel::onOtpChange,
+                onVerifyClick = { authViewModel.verifyOTP() },
+                onResendClick = { authViewModel.sendOTP() },
+                onBackClick = {
+                    authViewModel.resetAuthFields()
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
                 }
             )
         }

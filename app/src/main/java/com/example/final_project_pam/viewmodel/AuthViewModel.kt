@@ -150,7 +150,7 @@ class AuthViewModel : ViewModel() {
                     email = email,
                     password = password
                 )
-                _uiState.value = AuthUiState.RegisterSuccess
+                _uiState.value = AuthUiState.OtpSent
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(
                     message = mapAuthError(e.message)
@@ -164,7 +164,7 @@ class AuthViewModel : ViewModel() {
             try {
                 _uiState.value = AuthUiState.Loading
                 repository.sendOTP(_email.value.trim())
-                _uiState.value = AuthUiState.Success
+                _uiState.value = AuthUiState.OtpSent
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(message = mapAuthError(e.message))
             }
@@ -180,7 +180,7 @@ class AuthViewModel : ViewModel() {
                     token = _otpCode.value,
                     type = type
                 )
-                _uiState.value = AuthUiState.Success
+                _uiState.value = AuthUiState.OtpVerified
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(message = mapAuthError(e.message))
             }

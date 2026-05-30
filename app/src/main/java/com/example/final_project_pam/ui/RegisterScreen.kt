@@ -1,5 +1,6 @@
 package com.example.final_project_pam.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -8,9 +9,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.final_project_pam.R
 import com.example.final_project_pam.viewmodel.AuthUiState
 
 @Composable
@@ -45,10 +51,14 @@ fun RegisterScreen(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "LOGO",
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                style = MaterialTheme.typography.labelLarge
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo_app),
+                contentDescription = "Logo Unscroll",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
         }
 
@@ -66,7 +76,22 @@ fun RegisterScreen(
             onValueChange = onUsernameChange,
             label = { Text("Nama Depan") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            )
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -77,6 +102,21 @@ fun RegisterScreen(
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
 
@@ -88,7 +128,22 @@ fun RegisterScreen(
             label = { Text("Kata Sandi") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            )
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -100,7 +155,22 @@ fun RegisterScreen(
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            isError = isPasswordMismatch
+            isError = isPasswordMismatch,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedIndicatorColor = if (isPasswordMismatch) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = if (isPasswordMismatch) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = if (isPasswordMismatch) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = if (isPasswordMismatch) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            )
         )
 
         if (isPasswordMismatch) {
@@ -140,14 +210,6 @@ fun RegisterScreen(
         }
 
         when (uiState) {
-            is AuthUiState.RegisterSuccess -> {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Registrasi berhasil! Cek email Anda untuk konfirmasi akun.",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
             is AuthUiState.Error -> {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(

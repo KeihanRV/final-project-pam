@@ -4,6 +4,7 @@ sealed class AuthUiState {
     object Idle : AuthUiState()
     object Loading : AuthUiState()
     object Success : AuthUiState()
-    object RegisterSuccess : AuthUiState()
+    object OtpSent : AuthUiState()
+    object OtpVerified : AuthUiState()
     data class Error(val message: String) : AuthUiState()
 }
