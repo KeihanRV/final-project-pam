@@ -6,6 +6,7 @@ import com.example.final_project_pam.data.local.AppDataStore
 import com.example.final_project_pam.data.model.InstalledApp
 import com.example.final_project_pam.data.model.SelectedApp
 import com.example.final_project_pam.data.model.SelectedAppSupabase
+import com.example.final_project_pam.data.model.AppUsageInsertBody
 import com.example.final_project_pam.data.model.UpsertSelectedAppBody
 import com.example.final_project_pam.data.model.toDomain
 import com.example.final_project_pam.data.source.PackageManagerSource
@@ -141,6 +142,34 @@ class AppSelectRepository(context: Context) {
 
     suspend fun getCachedApps(): List<SelectedApp> {
         return appDataStore.cachedSelectedApps.first()
+    }
+
+    suspend fun insertAppUsage(
+        userId: String,
+        packageName: String,
+        appName: String,
+        timeSpentMinutes: Long,
+        maxLimitMinutes: Long
+    ): Boolean {
+        return try {
+            val now = java.time.Instant.now()
+            val lastAccessed = now.toString()
+            val usageDate = java.time.LocalDate.now().toString()
+
+            val body = AppUsageInsertBody(
+                userId = userId,
+                packageName = packageName,
+                appName = appName,
+                timeSpentMinutes = timeSpentMinutes,
+                maxLimitMinutes = maxLimitMinutes,
+                lastAccessed = lastAccessed,
+                usageDate = usageDate
+            )
+            supabase.postgrest["app_usage"].insert(body)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun getLaunchIntent(packageName: String) = packageManagerSource.getLaunchIntent(packageName)

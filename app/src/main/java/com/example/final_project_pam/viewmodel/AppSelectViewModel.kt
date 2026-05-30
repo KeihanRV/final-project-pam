@@ -159,6 +159,14 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val current = _uiState.value as? AppSelectUiState.Success ?: return@launch
 
+            val target = current.selectedApps.find { it.packageName == packageName }
+            if (target != null && target.lockUntilTimestamp > System.currentTimeMillis()) {
+                _uiState.value = current.copy(
+                    snackbarMessage = "Tidak bisa menghapus aplikasi yang sedang terkunci"
+                )
+                return@launch
+            }
+
             _uiState.value = current.copy(
                 pendingActionPackage = packageName,
                 isSaving = true
@@ -270,7 +278,10 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
                 if (result != null) newSelected.add(result)
             }
 
-            val toDelete = _currentSelectedPackages.value - selectedPackages
+            val toDelete = (_currentSelectedPackages.value - selectedPackages).filter { pkg ->
+                val app = current.selectedApps.find { it.packageName == pkg }
+                app == null || app.lockUntilTimestamp <= System.currentTimeMillis()
+            }
             for (packageName in toDelete) {
                 repository.deleteSelectedApp(userId, packageName)
             }

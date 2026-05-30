@@ -293,12 +293,12 @@ private fun AppCardFull(
                     )
                     Text(
                         if (isLocked) "Terkunci" else "${app.unscrollMinutes} menit",
-                        color = if (isLocked) UnscrollBlack.copy(alpha = 0.5f) else UnscrollBlack.copy(alpha = 0.65f),
+                        color = if (isLocked) UnscrollSecondary else UnscrollBlack.copy(alpha = 0.65f),
                         fontSize = 12.sp,
                         maxLines = 1
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(40.dp), enabled = !isPending) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(40.dp), enabled = !isPending && !isLocked) {
                     Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = UnscrollSecondary, modifier = Modifier.size(20.dp))
                 }
             }
@@ -371,7 +371,11 @@ private fun AppCardFull(
                 Button(
                     onClick = onLaunch,
                     modifier = Modifier.height(40.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isLocked) Color.Gray else UnscrollPrimary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = UnscrollPrimary,
+                        disabledContainerColor = if (isLocked) Color(0xFF757575) else UnscrollPrimary.copy(alpha = 0.4f),
+                        disabledContentColor = Color.White
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     enabled = !isPending && !hasChanged && !isLocked,
                     contentPadding = PaddingValues(horizontal = 16.dp)

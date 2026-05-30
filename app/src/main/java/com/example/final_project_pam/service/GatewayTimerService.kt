@@ -92,15 +92,32 @@ class GatewayTimerService : Service() {
                     sendWarningNotification()
                 }
             }
-            onTimerFinished(targetPackage)
+            onTimerFinished(targetPackage, minutes)
         }
     }
 
-    private suspend fun onTimerFinished(targetPackage: String) {
+    private suspend fun onTimerFinished(targetPackage: String, durationMinutes: Int) {
         AppMonitorService.isTimerRunning = false
         AppMonitorService.allowedPackage = null
         val lockUntil = System.currentTimeMillis() + (15L * 60 * 1000)
         repository.setLockForApp(targetPackage, lockUntil)
+
+        val appLabel = try {
+            val info = packageManager.getApplicationInfo(targetPackage, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (_: Exception) { targetPackage }
+
+        val userId = repository.getUserId()
+        if (userId != null) {
+            repository.insertAppUsage(
+                userId = userId,
+                packageName = targetPackage,
+                appName = appLabel,
+                timeSpentMinutes = durationMinutes.toLong(),
+                maxLimitMinutes = durationMinutes.toLong()
+            )
+        }
+
         sendTimerFinishedNotification(targetPackage)
         withContext(Dispatchers.Main) {
             AppMonitorService.instance?.forceOpenUnscroll()
