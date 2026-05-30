@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -39,6 +42,7 @@ import com.example.final_project_pam.viewmodel.AppSelectUiState
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSelectScreen(
     viewModel: AppSelectViewModel,
@@ -47,7 +51,6 @@ fun AppSelectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lockedPackages by viewModel.lockedPackages.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -56,6 +59,19 @@ fun AppSelectScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadData()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(uiState) {
@@ -97,62 +113,77 @@ fun AppSelectScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when (val state = uiState) {
-            is AppSelectUiState.Loading -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(color = UnscrollPrimary)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Memuat data...", color = UnscrollBlack.copy(alpha = 0.6f))
-                }
-            }
-            is AppSelectUiState.Error -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(state.message, color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { viewModel.loadData() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = UnscrollPrimary,
-                            contentColor = Color.White
-                        )
+    Box(modifier = Modifier.fillMaxSize().background(UnscrollBackground)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            when (val state = uiState) {
+                is AppSelectUiState.Loading -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Coba Lagi", color = Color.White)
+                        CircularProgressIndicator(color = UnscrollPrimary)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Memuat data...", color = UnscrollBlack.copy(alpha = 0.6f))
                     }
                 }
-            }
-            is AppSelectUiState.Success -> {
-                if (state.selectedApps.isEmpty()) {
-                    EmptyContent(onAddClick = onNavigateToPicker)
-                } else {
-                    SelectedAppsContent(
-                        selectedApps = state.selectedApps,
-                        isSaving = state.isSaving,
-                        pendingActionPackage = state.pendingActionPackage,
-                        lockedPackages = lockedPackages,
-                        showAccessibilityWarning = showAccessibilityWarning && !isAccessibilityServiceEnabled(context),
-                        onDismissAccessibilityWarning = { showAccessibilityWarning = false },
-                        onOpenAccessibilitySettings = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                        onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
-                        onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
-                        onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
-                    )
-
-                    FloatingActionButton(
-                        onClick = onNavigateToPicker,
+                is AppSelectUiState.Error -> {
+                    Column(
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp),
-                        containerColor = UnscrollPrimary,
-                        contentColor = Color.White
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Tambah Aplikasi")
+                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.loadData() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = UnscrollPrimary,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Coba Lagi", color = Color.White)
+                        }
+                    }
+                }
+                is AppSelectUiState.Success -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        if (state.selectedApps.isEmpty()) {
+                            EmptyContent(onAddClick = onNavigateToPicker)
+                        } else {
+                            SelectedAppsContent(
+                                selectedApps = state.selectedApps,
+                                isSaving = state.isSaving,
+                                pendingActionPackage = state.pendingActionPackage,
+                                lockedPackages = lockedPackages,
+                                showAccessibilityWarning = showAccessibilityWarning && !isAccessibilityServiceEnabled(context),
+                                onDismissAccessibilityWarning = { showAccessibilityWarning = false },
+                                onOpenAccessibilitySettings = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                                onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
+                                onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
+                                onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
+                            )
+
+                            FloatingActionButton(
+                                onClick = onNavigateToPicker,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(16.dp),
+                                containerColor = UnscrollPrimary,
+                                contentColor = Color.White
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Tambah Aplikasi")
+                            }
+                        }
                     }
                 }
             }

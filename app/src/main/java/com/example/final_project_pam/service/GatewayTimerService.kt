@@ -119,10 +119,29 @@ class GatewayTimerService : Service() {
         }
 
         sendTimerFinishedNotification(targetPackage)
+
+        // Coba redirect via AppMonitorService (accessibility service)
         withContext(Dispatchers.Main) {
-            AppMonitorService.instance?.forceOpenUnscroll()
+            if (AppMonitorService.instance != null) {
+                AppMonitorService.instance!!.forceOpenUnscroll()
+            } else {
+                // Fallback: redirect langsung dari sini jika accessibility service tidak aktif
+                forceOpenUnscrollDirect()
+            }
         }
+
+        // Beri waktu untuk sistem memproses intent redirect sebelum service mati
+        delay(2000)
         stopSelf()
+    }
+
+    private fun forceOpenUnscrollDirect() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        startActivity(intent)
     }
 
     private fun sendTimerFinishedNotification(targetPackage: String) {

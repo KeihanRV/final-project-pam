@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Home
@@ -20,12 +21,40 @@ import com.example.final_project_pam.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnscrollHeader(
-    onLogoutClick: () -> Unit
+    onBackClick: (() -> Unit)? = null,
+    onLogoutClick: (() -> Unit)? = null,
+    showLogoEnd: Boolean = false
 ) {
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Logo
+                if (!showLogoEnd) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(UnscrollPrimary, RoundedCornerShape(4.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("U", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Unscroll", color = UnscrollBlack, fontWeight = FontWeight.Bold)
+            }
+        },
+        navigationIcon = {
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = UnscrollBlack
+                    )
+                }
+            }
+        },
+        actions = {
+            if (showLogoEnd) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -35,17 +64,15 @@ fun UnscrollHeader(
                     Text("U", color = Color.White, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // App Name
-                Text("Unscroll", color = UnscrollBlack, fontWeight = FontWeight.Bold)
             }
-        },
-        actions = {
-            IconButton(onClick = onLogoutClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = "Logout",
-                    tint = UnscrollBlack
-                )
+            if (onLogoutClick != null) {
+                IconButton(onClick = onLogoutClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Logout",
+                        tint = UnscrollBlack
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = UnscrollBackground)

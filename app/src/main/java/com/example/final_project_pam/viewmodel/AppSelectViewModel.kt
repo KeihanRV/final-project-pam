@@ -204,6 +204,10 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun launchApp(context: Context, packageName: String, durationMinutes: Int) {
+        // Tambahkan ke monitoredPackages agar accessibility service bisa memblokir app ini
+        // meskipun belum ada data di tabel app_usage
+        GatewayTimerService.monitoredPackages.add(packageName)
+
         // Set allowed package
         AppMonitorService.allowedPackage = packageName
 

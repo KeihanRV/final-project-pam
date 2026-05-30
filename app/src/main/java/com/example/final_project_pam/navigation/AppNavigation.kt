@@ -1,15 +1,21 @@
 package com.example.final_project_pam.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
@@ -23,6 +29,7 @@ import com.example.final_project_pam.ui.RegisterScreen
 import com.example.final_project_pam.ui.components.UnscrollBottomNavigation
 import com.example.final_project_pam.ui.components.UnscrollHeader
 import com.example.final_project_pam.ui.theme.UnscrollBackground
+import com.example.final_project_pam.ui.theme.UnscrollBlack
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import com.example.final_project_pam.viewmodel.AuthCheckState
 import com.example.final_project_pam.viewmodel.AuthUiState
@@ -52,6 +59,7 @@ fun AppNavigation(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticatedLayout(
     authViewModel: AuthViewModel
@@ -63,11 +71,11 @@ fun AuthenticatedLayout(
 
     Scaffold(
         topBar = {
-            UnscrollHeader(
-                onLogoutClick = {
-                    authViewModel.logout()
-                }
-            )
+            when (currentRoute) {
+                Screen.Dashboard.route -> UnscrollHeader(onLogoutClick = { authViewModel.logout() })
+                Screen.AppSelect.route -> UnscrollHeader(onBackClick = { navController.popBackStack() }, showLogoEnd = true)
+                Screen.Profile.route -> UnscrollHeader(onBackClick = { navController.popBackStack() }, showLogoEnd = true)
+            }
         },
         bottomBar = {
             UnscrollBottomNavigation(
