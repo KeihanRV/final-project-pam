@@ -10,9 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-//import com.example.final_project_pam.ui.theme.FinalprojectpamTheme
 import com.example.final_project_pam.viewmodel.AuthUiState
 
 @Composable
@@ -32,7 +30,6 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Placeholder Logo
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -112,19 +109,3 @@ fun LoginScreen(
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun LoginScreenPreview() {
-//
-//        LoginScreen(
-//            email = "user@example.com",
-//            password = "password123",
-//            uiState = AuthUiState.Idle,
-//            onEmailChange = {},
-//            onPasswordChange = {},
-//            onLoginClick = {},
-//            onNavigateToRegister = {}
-//        )
-//
-//}

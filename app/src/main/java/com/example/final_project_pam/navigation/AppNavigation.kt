@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +23,6 @@ import com.example.final_project_pam.ui.components.UnscrollHeader
 import com.example.final_project_pam.ui.theme.UnscrollBackground
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import com.example.final_project_pam.viewmodel.AuthCheckState
-import com.example.final_project_pam.viewmodel.AuthUiState
 import com.example.final_project_pam.viewmodel.AuthViewModel
 
 @Composable
@@ -129,6 +127,7 @@ fun AuthNavHost(
     val username = authViewModel.userName.collectAsStateWithLifecycle()
     val email = authViewModel.email.collectAsStateWithLifecycle()
     val password = authViewModel.password.collectAsStateWithLifecycle()
+    val confirmPassword = authViewModel.confirmPassword.collectAsStateWithLifecycle()
     val uiState = authViewModel.uiState.collectAsStateWithLifecycle()
 
     NavHost(
@@ -143,7 +142,12 @@ fun AuthNavHost(
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
                 onLoginClick = { authViewModel.login() },
-                onNavigateToRegister = { navController.navigate(Screen.Register.route) }
+                onNavigateToRegister = {
+                    authViewModel.resetAuthFields()
+                    navController.navigate(Screen.Register.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -152,11 +156,17 @@ fun AuthNavHost(
                 userName = username.value,
                 email = email.value,
                 password = password.value,
+                confirmPassword = confirmPassword.value,
                 uiState = uiState.value,
+                onUsernameChange = authViewModel::onUsernameChange,
                 onEmailChange = authViewModel::onEmailChange,
                 onPasswordChange = authViewModel::onPasswordChange,
+                onConfirmPasswordChange = authViewModel::onConfirmPasswordChange,
                 onRegisterClick = { authViewModel.register() },
-                onNavigateToLogin = { navController.popBackStack() }
+                onNavigateToLogin = {
+                    authViewModel.resetAuthFields()
+                    navController.popBackStack()
+                }
             )
         }
     }

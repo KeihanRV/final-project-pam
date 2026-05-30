@@ -24,9 +24,8 @@ class AuthRepository {
         supabase.auth.signUpWith(Email) {
             this.email = email
             this.password = password
-            // Menyimpan username ke dalam user_metadata
             data = buildJsonObject {
-                put("username", username)
+                put("full_name", username)
             }
         }
     }
