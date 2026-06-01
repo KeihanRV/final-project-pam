@@ -1,5 +1,7 @@
 package com.example.final_project_pam.ui
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -249,6 +251,7 @@ private fun SectionHeader(title: String, subtitle: String? = null) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UsageChart(
     stackedChartData: StackedChartData,
@@ -257,9 +260,13 @@ private fun UsageChart(
     val modelProducer = remember { CartesianChartModelProducer() }
 
     val indoDayLabels = remember {
-        val today = java.time.LocalDate.now()
-        val names = arrayOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
-        (6 downTo 0).map { names[today.minusDays(it.toLong()).dayOfWeek.value % 7] }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val today = java.time.LocalDate.now()
+            val names = arrayOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
+            (6 downTo 0).map { names[today.minusDays(it.toLong()).dayOfWeek.value % 7] }
+        } else {
+            listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
+        }
     }
 
     LaunchedEffect(stackedChartData) {
@@ -533,19 +540,5 @@ private fun formatMinutes(minutes: Long): String {
     return when {
         minutes >= 60 -> "${minutes / 60}j ${minutes % 60}m"
         else -> "${minutes}m"
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DashboardPreview() {
-    FinalprojectpamTheme {
-        DashboardContent(
-            userName = "Harvey",
-            dailyUsageStats = listOf(),
-            summary = DashboardSummary(0, 0, 0),
-            aggregatedApps = listOf(),
-            stackedChartData = StackedChartData(emptyList(), emptyList())
-        )
     }
 }
