@@ -18,9 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -41,6 +42,7 @@ import com.example.final_project_pam.viewmodel.AppSelectUiState
 import com.example.final_project_pam.viewmodel.AppSelectViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSelectScreen(
     viewModel: AppSelectViewModel,
@@ -49,19 +51,32 @@ fun AppSelectScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lockedPackages by viewModel.lockedPackages.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var showConfirmDialog by remember { mutableStateOf(false) }
     var appToLaunch by remember { mutableStateOf<SelectedApp?>(null) }
+    var showAccessibilityWarning by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadData()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(uiState) {
         val msg = (uiState as? AppSelectUiState.Success)?.snackbarMessage ?: return@LaunchedEffect
-        scope.launch {
+        if (msg.isNotEmpty()) {
             snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Short)
             viewModel.clearSnackbar()
         }
@@ -98,42 +113,85 @@ fun AppSelectScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when (val state = uiState) {
-            is AppSelectUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = UnscrollPrimary)
-            is AppSelectUiState.Error -> Text(state.message, modifier = Modifier.align(Alignment.Center))
-            is AppSelectUiState.Success -> {
-                if (state.selectedApps.isEmpty()) {
-                    EmptyContent(onAddClick = onNavigateToPicker)
-                } else {
-                    SelectedAppsContent(
-                        selectedApps = state.selectedApps,
-                        isSaving = state.isSaving,
-                        pendingActionPackage = state.pendingActionPackage,
-                        lockedPackages = lockedPackages,
-                        onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
-                        onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
-                        onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
-                    )
+    Box(modifier = Modifier.fillMaxSize().background(UnscrollBackground)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            when (val state = uiState) {
+                is AppSelectUiState.Loading -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(color = UnscrollPrimary)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Memuat data...", color = UnscrollBlack.copy(alpha = 0.6f))
+                    }
+                }
+                is AppSelectUiState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.loadData() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = UnscrollPrimary,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Coba Lagi", color = Color.White)
+                        }
+                    }
+                }
+                is AppSelectUiState.Success -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        if (state.selectedApps.isEmpty()) {
+                            EmptyContent(onAddClick = onNavigateToPicker)
+                        } else {
+                            SelectedAppsContent(
+                                selectedApps = state.selectedApps,
+                                isSaving = state.isSaving,
+                                pendingActionPackage = state.pendingActionPackage,
+                                lockedPackages = lockedPackages,
+                                showAccessibilityWarning = showAccessibilityWarning && !isAccessibilityServiceEnabled(context),
+                                onDismissAccessibilityWarning = { showAccessibilityWarning = false },
+                                onOpenAccessibilitySettings = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                                onUpdateMinutes = { pkg, mins -> viewModel.updateMinutes(pkg, mins) },
+                                onDeleteApp = { pkg -> viewModel.deleteApp(pkg) },
+                                onLaunchApp = { app -> appToLaunch = app; showConfirmDialog = true }
+                            )
+
+                            FloatingActionButton(
+                                onClick = onNavigateToPicker,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(16.dp),
+                                containerColor = UnscrollPrimary,
+                                contentColor = Color.White
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Tambah Aplikasi")
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // FAB to add apps
-        FloatingActionButton(
-            onClick = onNavigateToPicker,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = UnscrollPrimary,
-            contentColor = Color.White
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add App")
-        }
-
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp)
         )
     }
 }
@@ -144,35 +202,80 @@ private fun SelectedAppsContent(
     isSaving: Boolean,
     pendingActionPackage: String?,
     lockedPackages: Set<String>,
+    showAccessibilityWarning: Boolean,
+    onDismissAccessibilityWarning: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
     onUpdateMinutes: (String, Int) -> Unit,
     onDeleteApp: (String) -> Unit,
     onLaunchApp: (SelectedApp) -> Unit
 ) {
-    val context = LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            if (!isAccessibilityServiceEnabled(context)) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = UnscrollSecondary.copy(alpha = 0.1f)),
-                    modifier = Modifier.fillMaxWidth().clickable { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        if (showAccessibilityWarning) {
+            item {
+                Surface(
+                    color = UnscrollSecondary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("⚠️ Aktifkan Izin Accessibility untuk fitur Auto-Redirect!", modifier = Modifier.padding(12.dp), color = UnscrollSecondary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = UnscrollSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Aksesibilitas diperlukan",
+                                color = UnscrollSecondary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                        TextButton(
+                            onClick = onOpenAccessibilitySettings,
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) {
+                            Text("Aktifkan", color = UnscrollSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                        IconButton(
+                            onClick = onDismissAccessibilityWarning,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Tutup",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
 
         item {
-            Text("Aplikasi Pilihan", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, color = UnscrollBlack))
+            Text(
+                "Aplikasi Pilihan",
+                modifier = Modifier.padding(bottom = 4.dp),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = UnscrollBlack
+                )
+            )
         }
 
         items(selectedApps, key = { it.packageName }) { app ->
             AppCardFull(
                 app = app,
-                context = context,
                 isPending = pendingActionPackage == app.packageName && isSaving,
                 isLocked = lockedPackages.contains(app.packageName),
                 onMinutesChange = { mins -> onUpdateMinutes(app.packageName, mins) },
@@ -186,16 +289,19 @@ private fun SelectedAppsContent(
 @Composable
 private fun AppCardFull(
     app: SelectedApp,
-    context: Context,
     isPending: Boolean,
     isLocked: Boolean,
     onMinutesChange: (Int) -> Unit,
     onDelete: () -> Unit,
     onLaunch: () -> Unit
 ) {
-    var minutesText by remember(app.unscrollMinutes) { mutableStateOf(app.unscrollMinutes.toString()) }
+    var minutesText by remember { mutableStateOf(app.unscrollMinutes.toString()) }
+    LaunchedEffect(app.unscrollMinutes) {
+        minutesText = app.unscrollMinutes.toString()
+    }
     val hasChanged = minutesText != app.unscrollMinutes.toString()
-    val icon = rememberAppIcon(context, app.packageName)
+    val parsedMinutes = minutesText.toIntOrNull() ?: 0
+    val isValidRange = parsedMinutes in 1..1440
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -205,32 +311,67 @@ private fun AppCardFull(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                AppIconBox(icon = icon, packageName = app.packageName)
-                Spacer(modifier = Modifier.width(10.dp))
+                AppIconBox(packageName = app.packageName)
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(app.appLabel, fontWeight = FontWeight.Bold, color = UnscrollBlack, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(app.packageName, color = UnscrollBlack.copy(alpha = 0.4f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        app.appLabel,
+                        fontWeight = FontWeight.Bold,
+                        color = UnscrollBlack,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        if (isLocked) "Terkunci" else "${app.unscrollMinutes} menit",
+                        color = if (isLocked) UnscrollSecondary else UnscrollBlack.copy(alpha = 0.65f),
+                        fontSize = 12.sp,
+                        maxLines = 1
+                    )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp), enabled = !isPending) {
-                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = UnscrollSecondary, modifier = Modifier.size(16.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(40.dp), enabled = !isPending && !isLocked) {
+                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = UnscrollSecondary, modifier = Modifier.size(20.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    val current = minutesText.toIntOrNull() ?: 0
-                    if (current > 1) minutesText = (current - 1).toString()
-                }, modifier = Modifier.size(24.dp), enabled = !isPending && !isLocked) {
-                    Icon(Icons.Default.Remove, contentDescription = null, tint = UnscrollPrimary)
+            Row(
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        val current = minutesText.toIntOrNull() ?: 0
+                        if (current > 1) minutesText = (current - 1).toString()
+                    },
+                    modifier = Modifier.size(40.dp),
+                    enabled = !isPending && !isLocked
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = null, tint = UnscrollPrimary, modifier = Modifier.size(20.dp))
                 }
 
-                Box(modifier = Modifier.width(48.dp).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(UnscrollBlack.copy(alpha = 0.03f)).border(1.dp, UnscrollBlack.copy(alpha = 0.12f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .width(56.dp)
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(UnscrollBlack.copy(alpha = 0.03f))
+                        .border(1.dp, UnscrollBlack.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
                     BasicTextField(
                         value = minutesText,
-                        onValueChange = { v -> if (v.length <= 4) minutesText = v.filter { it.isDigit() } },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.Center, color = UnscrollBlack),
+                        onValueChange = { v ->
+                            if (v.length <= 4) {
+                                val filtered = v.filter { it.isDigit() }
+                                val num = filtered.toIntOrNull()
+                                if (num == null || num <= 1440) {
+                                    minutesText = filtered
+                                }
+                            }
+                        },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center, color = UnscrollBlack),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -238,38 +379,47 @@ private fun AppCardFull(
                     )
                 }
 
-                IconButton(onClick = {
-                    val current = minutesText.toIntOrNull() ?: 0
-                    if (current < 1440) minutesText = (current + 1).toString()
-                }, modifier = Modifier.size(24.dp), enabled = !isPending && !isLocked) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = UnscrollPrimary)
+                IconButton(
+                    onClick = {
+                        val current = minutesText.toIntOrNull() ?: 0
+                        if (current < 1440) minutesText = (current + 1).toString()
+                    },
+                    modifier = Modifier.size(40.dp),
+                    enabled = !isPending && !isLocked
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = UnscrollPrimary, modifier = Modifier.size(20.dp))
                 }
 
-                Text(" mnt", color = UnscrollBlack.copy(alpha = 0.6f), fontSize = 12.sp)
+                Text(" menit", color = UnscrollBlack.copy(alpha = 0.75f), fontSize = 13.sp)
                 Spacer(modifier = Modifier.weight(1f))
 
-                if (hasChanged && !isLocked) {
-                    TextButton(onClick = { minutesText.toIntOrNull()?.let { onMinutesChange(it) } }, enabled = !isPending) {
+                if (hasChanged && !isLocked && isValidRange) {
+                    TextButton(onClick = { onMinutesChange(parsedMinutes) }, enabled = !isPending) {
                         Text("Simpan", color = UnscrollPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Button(
                     onClick = onLaunch,
-                    modifier = Modifier.fillMaxHeight(),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isLocked) Color.Gray else UnscrollPrimary),
+                    modifier = Modifier.height(40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = UnscrollPrimary,
+                        disabledContainerColor = if (isLocked) Color(0xFF757575) else UnscrollPrimary.copy(alpha = 0.4f),
+                        disabledContentColor = Color.White
+                    ),
                     shape = RoundedCornerShape(8.dp),
-                    enabled = !isPending && !hasChanged && !isLocked
+                    enabled = !isPending && !hasChanged && !isLocked,
+                    contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
                     if (isPending) {
-                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color.White)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                     } else if (isLocked) {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Locked", color = Color.White, fontSize = 13.sp)
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Terkunci", color = Color.White, fontSize = 13.sp)
                     } else {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text("Mulai", color = Color.White, fontSize = 13.sp)
                     }
                 }
@@ -279,24 +429,73 @@ private fun AppCardFull(
 }
 
 @Composable
-private fun AppIconBox(icon: ImageBitmap?, packageName: String) {
-    Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, UnscrollBlack.copy(alpha = 0.08f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+private fun AppIconBox(packageName: String) {
+    val context = LocalContext.current
+    val icon = rememberAppIcon(context, packageName)
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White)
+            .border(1.dp, UnscrollBlack.copy(alpha = 0.08f), RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
         if (icon != null) {
-            Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Fit)
+            Image(
+                bitmap = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Fit
+            )
         } else {
-            Text(text = packageName.take(1).uppercase(), fontWeight = FontWeight.Bold, color = UnscrollPrimary)
+            Text(
+                text = packageName.take(1).uppercase(),
+                fontWeight = FontWeight.Bold,
+                color = UnscrollPrimary,
+                fontSize = 16.sp
+            )
         }
     }
 }
 
 @Composable
 private fun EmptyContent(onAddClick: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Icon(Icons.Default.Apps, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.LightGray)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.Apps,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = UnscrollBlack.copy(alpha = 0.35f)
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Belum ada aplikasi dipilih", color = Color.Gray)
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onAddClick, colors = ButtonDefaults.buttonColors(containerColor = UnscrollPrimary)) { Text("Tambah Aplikasi") }
+        Text(
+            "Belum ada aplikasi dipilih",
+            color = UnscrollBlack.copy(alpha = 0.7f),
+            fontSize = 16.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "Pilih aplikasi yang ingin Anda batasi penggunaannya",
+            color = UnscrollBlack.copy(alpha = 0.6f),
+            fontSize = 13.sp
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onAddClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = UnscrollPrimary,
+                contentColor = Color.White
+            )
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Tambah Aplikasi", color = Color.White)
+        }
     }
 }
 

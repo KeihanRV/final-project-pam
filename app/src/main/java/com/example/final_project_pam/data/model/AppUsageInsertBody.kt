@@ -1,31 +1,22 @@
 package com.example.final_project_pam.data.model
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
-data class AppUsageStats(
-    @SerialName("id")
-    val id: Long,
-
+data class AppUsageInsertBody(
     @SerialName("user_id")
-    val user_id: String,
-
+    val userId: String,
     @SerialName("package_name")
     val packageName: String,
-
     @SerialName("app_name")
-    val app_name: String,
-
+    val appName: String,
     @SerialName("time_spent_minutes")
-    val time_spent_minutes: Long,
-
+    val timeSpentMinutes: Long,
     @SerialName("max_limit_minutes")
-    val max_limit_minutes: Long,
-
+    val maxLimitMinutes: Long,
     @SerialName("last_accessed")
-    val last_accessed: String,
-
+    val lastAccessed: String,
     @SerialName("usage_date")
-    val usage_date: String = ""
+    val usageDate: String
 )

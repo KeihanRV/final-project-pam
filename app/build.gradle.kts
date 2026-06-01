@@ -71,4 +71,7 @@ dependencies {
     
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Charts
+    implementation(libs.vico.compose.m3)
 }

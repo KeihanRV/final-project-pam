@@ -92,20 +92,56 @@ class GatewayTimerService : Service() {
                     sendWarningNotification()
                 }
             }
-            onTimerFinished(targetPackage)
+            onTimerFinished(targetPackage, minutes)
         }
     }
 
-    private suspend fun onTimerFinished(targetPackage: String) {
+    private suspend fun onTimerFinished(targetPackage: String, durationMinutes: Int) {
         AppMonitorService.isTimerRunning = false
         AppMonitorService.allowedPackage = null
         val lockUntil = System.currentTimeMillis() + (15L * 60 * 1000)
         repository.setLockForApp(targetPackage, lockUntil)
-        sendTimerFinishedNotification(targetPackage)
-        withContext(Dispatchers.Main) {
-            AppMonitorService.instance?.forceOpenUnscroll()
+
+        val appLabel = try {
+            val info = packageManager.getApplicationInfo(targetPackage, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (_: Exception) { targetPackage }
+
+        val userId = repository.getUserId()
+        if (userId != null) {
+            repository.insertAppUsage(
+                userId = userId,
+                packageName = targetPackage,
+                appName = appLabel,
+                timeSpentMinutes = durationMinutes.toLong(),
+                maxLimitMinutes = durationMinutes.toLong()
+            )
         }
+
+        sendTimerFinishedNotification(targetPackage)
+
+        // Coba redirect via AppMonitorService (accessibility service)
+        withContext(Dispatchers.Main) {
+            if (AppMonitorService.instance != null) {
+                AppMonitorService.instance!!.forceOpenUnscroll()
+            } else {
+                // Fallback: redirect langsung dari sini jika accessibility service tidak aktif
+                forceOpenUnscrollDirect()
+            }
+        }
+
+        // Beri waktu untuk sistem memproses intent redirect sebelum service mati
+        delay(2000)
         stopSelf()
+    }
+
+    private fun forceOpenUnscrollDirect() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        startActivity(intent)
     }
 
     private fun sendTimerFinishedNotification(targetPackage: String) {

@@ -1,8 +1,10 @@
 package com.example.final_project_pam.viewmodel
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.final_project_pam.repository.AuthRepository
+import io.github.jan.supabase.auth.OtpType
 import kotlinx.coroutines.flow.MutableStateFlow
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.StateFlow
@@ -10,49 +12,33 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
 
-    /*
-     * Repository digunakan untuk mengakses Supabase.
-     * Untuk materi dasar, repository dibuat langsung di ViewModel.
-     *
-     * Pada project besar, lebih baik gunakan Dependency Injection seperti Hilt.
-     */
     private val repository = AuthRepository()
 
-    /*
-     * _uiState bersifat private agar hanya ViewModel yang bisa mengubah state.
-     */
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
-
-    /*
-     * uiState bersifat public agar UI hanya bisa membaca state,
-     * tetapi tidak bisa mengubah langsung.
-     */
     val uiState: StateFlow<AuthUiState> = _uiState
 
     private val _authCheckState = MutableStateFlow<AuthCheckState>(AuthCheckState.Checking)
     val authCheckState: StateFlow<AuthCheckState> = _authCheckState
 
-    /*
-     * State untuk input email.
-     * Disimpan di ViewModel agar tetap aman saat recomposition.
-     */
+    private val _userName = MutableStateFlow("")
+    val userName: StateFlow<String> = _userName
+
     private val _email = MutableStateFlow("")
     val email: StateFlow<String> = _email
 
-    /*
-     * State untuk input password.
-     */
     private val _password = MutableStateFlow("")
     val password: StateFlow<String> = _password
+
+    private val _confirmPassword = MutableStateFlow("")
+    val confirmPassword: StateFlow<String> = _confirmPassword
+
+    private val _otpCode = MutableStateFlow("")
+    val otpCode: StateFlow<String> = _otpCode
 
     init {
         observeAuthStatus()
     }
 
-    /*
-     * Fungsi untuk memantau status autentikasi secara real-time.
-     * Supabase akan otomatis memuat session dari storage saat app dibuka.
-     */
     private fun observeAuthStatus() {
         viewModelScope.launch {
             repository.sessionStatus.collect { status ->
@@ -61,8 +47,6 @@ class AuthViewModel : ViewModel() {
                     is SessionStatus.NotAuthenticated -> AuthCheckState.NotAuthenticated
                     is SessionStatus.Initializing -> AuthCheckState.Checking
                     is SessionStatus.RefreshFailure -> {
-                        // Jika refresh gagal (misal koneksi internet), tetap cek session yang ada
-                        // atau anggap tidak terautentikasi jika session expired.
                         if (repository.isLoggedIn()) AuthCheckState.Authenticated
                         else AuthCheckState.NotAuthenticated
                     }
@@ -71,98 +55,172 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /*
-     * Fungsi ini dipanggil dari UI ketika user mengetik email.
-     */
+    fun onUsernameChange(value: String) {
+        _userName.value = value
+    }
+
     fun onEmailChange(value: String) {
         _email.value = value
     }
 
-    /*
-     * Fungsi ini dipanggil dari UI ketika user mengetik password.
-     */
     fun onPasswordChange(value: String) {
         _password.value = value
     }
 
-    /*
-     * Fungsi login.
-     * viewModelScope digunakan agar coroutine mengikuti lifecycle ViewModel.
-     */
+    fun onConfirmPasswordChange(value: String) {
+        _confirmPassword.value = value
+    }
+
+    fun onOtpChange(value: String) {
+        _otpCode.value = value
+    }
+
     fun login() {
+        val email = _email.value.trim()
+        val password = _password.value
+
+        // Validasi input
+        if (email.isEmpty()) {
+            _uiState.value = AuthUiState.Error("Email tidak boleh kosong")
+            return
+        }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _uiState.value = AuthUiState.Error("Format email tidak valid")
+            return
+        }
+        if (password.isEmpty()) {
+            _uiState.value = AuthUiState.Error("Password tidak boleh kosong")
+            return
+        }
+        if (password.length < 6) {
+            _uiState.value = AuthUiState.Error("Password minimal 6 karakter")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                /*
-                 * Ubah state menjadi Loading agar UI bisa menampilkan progress.
-                 */
                 _uiState.value = AuthUiState.Loading
-
-                /*
-                 * Panggil repository untuk login ke Supabase.
-                 */
-                repository.login(
-                    email = _email.value,
-                    password = _password.value
-                )
-
-                /*
-                 * Jika berhasil, ubah state menjadi Success.
-                 */
+                repository.login(email = email, password = password)
                 _uiState.value = AuthUiState.Success
-
             } catch (e: Exception) {
-                /*
-                 * Jika gagal, tampilkan pesan error.
-                 */
                 _uiState.value = AuthUiState.Error(
-                    message = e.message ?: "Login gagal"
+                    message = mapAuthError(e.message)
                 )
             }
         }
     }
 
-    /*
-     * Fungsi register user baru.
-     */
     fun register() {
+        val username = _userName.value.trim()
+        val email = _email.value.trim()
+        val password = _password.value
+        val confirmPassword = _confirmPassword.value
+
+        // Validasi input
+        if (username.isEmpty()) {
+            _uiState.value = AuthUiState.Error("Nama tidak boleh kosong")
+            return
+        }
+        if (email.isEmpty()) {
+            _uiState.value = AuthUiState.Error("Email tidak boleh kosong")
+            return
+        }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _uiState.value = AuthUiState.Error("Format email tidak valid")
+            return
+        }
+        if (password.isEmpty()) {
+            _uiState.value = AuthUiState.Error("Password tidak boleh kosong")
+            return
+        }
+        if (password.length < 6) {
+            _uiState.value = AuthUiState.Error("Password minimal 6 karakter")
+            return
+        }
+        if (password != confirmPassword) {
+            _uiState.value = AuthUiState.Error("Konfirmasi password tidak cocok")
+            return
+        }
+
         viewModelScope.launch {
             try {
                 _uiState.value = AuthUiState.Loading
-
                 repository.register(
-                    email = _email.value,
-                    password = _password.value
+                    username = username,
+                    email = email,
+                    password = password
                 )
-
-                _uiState.value = AuthUiState.Success
-
+                _uiState.value = AuthUiState.OtpSent
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(
-                    message = e.message ?: "Register gagal"
+                    message = mapAuthError(e.message)
                 )
             }
         }
     }
 
-    /*
-     * Fungsi logout.
-     */
+    fun sendOTP() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = AuthUiState.Loading
+                repository.sendOTP(_email.value.trim())
+                _uiState.value = AuthUiState.OtpSent
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(message = mapAuthError(e.message))
+            }
+        }
+    }
+
+    fun verifyOTP(type: OtpType.Email = OtpType.Email.SIGNUP) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = AuthUiState.Loading
+                repository.verifyOTP(
+                    email = _email.value.trim(),
+                    token = _otpCode.value,
+                    type = type
+                )
+                _uiState.value = AuthUiState.OtpVerified
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(message = mapAuthError(e.message))
+            }
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             repository.logout()
-
-            /*
-             * Setelah logout, state dikembalikan ke Idle.
-             */
             _uiState.value = AuthUiState.Idle
         }
     }
 
-    /*
-     * Fungsi ini digunakan untuk mengembalikan state ke Idle.
-     * Biasanya dipanggil setelah navigasi berhasil.
-     */
     fun resetState() {
         _uiState.value = AuthUiState.Idle
+    }
+
+    fun resetAuthFields() {
+        _userName.value = ""
+        _email.value = ""
+        _password.value = ""
+        _confirmPassword.value = ""
+        _otpCode.value = ""
+        _uiState.value = AuthUiState.Idle
+    }
+
+    private fun mapAuthError(raw: String?): String {
+        if (raw == null) return "Terjadi kesalahan"
+        return when {
+            raw.contains("Invalid login credentials", ignoreCase = true) ->
+                "Email atau password salah"
+            raw.contains("already registered", ignoreCase = true) ->
+                "Email sudah terdaftar"
+            raw.contains("Password should be at least", ignoreCase = true) ->
+                "Password minimal 6 karakter"
+            raw.contains("Unable to validate email address", ignoreCase = true) ->
+                "Format email tidak valid"
+            raw.contains("Email not confirmed", ignoreCase = true) ->
+                "Email belum dikonfirmasi, cek inbox Anda"
+            else -> raw
+        }
     }
 }

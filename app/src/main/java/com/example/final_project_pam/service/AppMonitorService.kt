@@ -59,7 +59,9 @@ class AppMonitorService : AccessibilityService() {
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("from_monitor", true)
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+        } catch (_: Exception) { }
     }
 
     override fun onInterrupt() {}

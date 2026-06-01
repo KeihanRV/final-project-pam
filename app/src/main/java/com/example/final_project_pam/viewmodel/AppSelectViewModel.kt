@@ -3,6 +3,7 @@ package com.example.final_project_pam.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -12,14 +13,19 @@ import com.example.final_project_pam.data.model.SelectedApp
 import com.example.final_project_pam.repository.AppSelectRepository
 import com.example.final_project_pam.service.AppMonitorService
 import com.example.final_project_pam.service.GatewayTimerService
+import com.example.final_project_pam.ui.iconCache
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppSelectViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -56,24 +62,14 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
-        loadData()
         startLockTicker()
     }
-
-    // Di AppSelectViewModel.kt
 
     private fun startLockTicker() {
         viewModelScope.launch {
             while (isActive) {
                 delay(1000)
-                val now = System.currentTimeMillis()
-                _nowMs.value = now
-
-                // Cek apakah ada yang baru saja terkunci di DataStore (dari Service)
-                val current = _uiState.value as? AppSelectUiState.Success ?: continue
-
-                // Opsional: Kamu bisa memanggil loadData() di sini secara berkala
-                // atau jika mendeteksi perubahan di DataStore agar UI terupdate otomatis
+                _nowMs.value = System.currentTimeMillis()
             }
         }
     }
@@ -92,6 +88,7 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
 
                 val selectedApps = repository.getUserSelectedApps(userId)
                 val installedApps = repository.getInstalledApps()
+                preloadIcons(installedApps.map { it.packageName })
 
                 _installedApps.value = installedApps
                 _currentSelectedPackages.value = selectedApps.map { it.packageName }.toSet()
@@ -162,6 +159,14 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val current = _uiState.value as? AppSelectUiState.Success ?: return@launch
 
+            val target = current.selectedApps.find { it.packageName == packageName }
+            if (target != null && target.lockUntilTimestamp > System.currentTimeMillis()) {
+                _uiState.value = current.copy(
+                    snackbarMessage = "Tidak bisa menghapus aplikasi yang sedang terkunci"
+                )
+                return@launch
+            }
+
             _uiState.value = current.copy(
                 pendingActionPackage = packageName,
                 isSaving = true
@@ -199,6 +204,10 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun launchApp(context: Context, packageName: String, durationMinutes: Int) {
+        // Tambahkan ke monitoredPackages agar accessibility service bisa memblokir app ini
+        // meskipun belum ada data di tabel app_usage
+        GatewayTimerService.monitoredPackages.add(packageName)
+
         // Set allowed package
         AppMonitorService.allowedPackage = packageName
 
@@ -273,7 +282,10 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
                 if (result != null) newSelected.add(result)
             }
 
-            val toDelete = _currentSelectedPackages.value - selectedPackages
+            val toDelete = (_currentSelectedPackages.value - selectedPackages).filter { pkg ->
+                val app = current.selectedApps.find { it.packageName == pkg }
+                app == null || app.lockUntilTimestamp <= System.currentTimeMillis()
+            }
             for (packageName in toDelete) {
                 repository.deleteSelectedApp(userId, packageName)
             }
@@ -295,8 +307,23 @@ class AppSelectViewModel(application: Application) : AndroidViewModel(applicatio
     fun initPickerSelections() {
         _pendingSelections.value = _currentSelectedPackages.value
         if (_installedApps.value.isEmpty()) {
-            val apps = repository.getInstalledApps()
-            _installedApps.value = apps
+            viewModelScope.launch {
+                val apps = repository.getInstalledApps()
+                preloadIcons(apps.map { it.packageName })
+                _installedApps.value = apps
+            }
+        }
+    }
+
+    private suspend fun preloadIcons(packages: List<String>) = withContext(Dispatchers.Default) {
+        val ctx = getApplication<Application>()
+        for (pkg in packages) {
+            if (iconCache.get(pkg) != null) continue
+            try {
+                val drawable = ctx.packageManager.getApplicationIcon(pkg)
+                val bmp = drawable.toBitmap(80, 80, Bitmap.Config.ARGB_8888)
+                iconCache.put(pkg, bmp.asImageBitmap())
+            } catch (_: Exception) { }
         }
     }
 
